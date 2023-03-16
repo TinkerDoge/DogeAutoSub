@@ -8,6 +8,6 @@ set PYTHON="%VENV_DIR%\Scripts\Python.exe"
 echo venv %PYTHON%
 
 :launch
-%PYTHON% AutoSub.py %*
+%PYTHON% AutoUI.py %*
 pause
 exit /b

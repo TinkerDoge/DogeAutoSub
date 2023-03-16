@@ -1,125 +1,287 @@
-import tkinter as tk
-from tkinter import filedialog
-from tkinter import messagebox
-import datetime
-import os
-import speech_recognition as sr
-from moviepy.editor import *
-from googletrans import Translator
-from pydub import AudioSegment
+import argparse
+import audioop
+from googleapiclient.discovery import build
+import json
 import math
-from langdetect import detect
+import multiprocessing
+import os
+import requests
+import subprocess
+import sys
+import tempfile
+import wave
 
-class App(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.pack()
-        self.create_widgets()
+from progressbar import ProgressBar, Percentage, Bar, ETA
 
-    def create_widgets(self):
-
-        # Set window size
-        self.master.geometry("420x240")
-
-        # Input file selection button
-        self.input_file_button = tk.Button(self, text="Select Input File", command=self.select_input_file)
-        self.input_file_button.configure(background='#2E4053', foreground='white', padx=10, pady=10)
-        self.input_file_button.pack(side="top")
+from autosub.constants import LANGUAGE_CODES, \
+    GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL
+from autosub.formatters import FORMATTERS
 
 
-        # Output folder selection button
-        self.output_folder_button = tk.Button(self, text="Select Output Folder", command=self.select_output_folder)
-        self.output_folder_button.configure(background='#2E4053', foreground='white', padx=10, pady=10)
-        self.output_folder_button.pack(side="top")
+def percentile(arr, percent):
+    arr = sorted(arr)
+    k = (len(arr) - 1) * percent
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c: return arr[int(k)]
+    d0 = arr[int(f)] * (c - k)
+    d1 = arr[int(c)] * (k - f)
+    return d0 + d1
 
-        # Output file path label
-        self.output_file_label = tk.Label(self, text="Output File Path:")
-        self.output_file_label.pack()
-            
-        # Output file path display
-        self.output_file_path_display = tk.Label(self, text="No folder selected")
-        self.output_file_path_display.pack()
 
-        # Language selection dropdown
-        self.language_label = tk.Label(self, text="Target Language:")
-        self.language_label.pack()
-        self.language_var = tk.StringVar(self)
-        self.language_var.set("en")  # Default value
-        self.language_dropdown = tk.OptionMenu(self, self.language_var, "en", "es", "fr", "de", "ja", "ko", "vi")
-        self.language_dropdown.pack()
+def is_same_language(lang1, lang2):
+    return lang1.split("-")[0] == lang2.split("-")[0]
 
-        # Transcription and translation start button
-        self.start_button = tk.Button(self, text="Start", command=self.process_audio_file)
-        self.start_button.configure(background='#2E4053', foreground='white', padx=10, pady=10)
-        self.start_button.pack(side="bottom")
-        
-    def select_input_file(self):
-        # Allow the user to select the input movie file
-        self.input_file_path = filedialog.askopenfilename(title="Select Movie File", filetypes=[("Movie Files", "*.mp4 *.avi *.mkv *.mov")])
-            
-    def select_output_folder(self):
-        # Allow the user to select the output folder
-        self.output_folder_path = filedialog.askdirectory()
-        self.output_file_path_display.configure(text=self.output_folder_path)
 
-    def process_audio_file(self):
-        # Use moviepy to extract audio from the movie file and convert it to the required format
-        output_audio_file_path = self.input_file_path.replace(".mp4", ".wav")
-        video = VideoFileClip(self.input_file_path)
-        audio = video.audio
-        audio.write_audiofile(output_audio_file_path)
+class FLACConverter(object):
+    def __init__(self, source_path, include_before=0.25, include_after=0.25):
+        self.source_path = source_path
+        self.include_before = include_before
+        self.include_after = include_after
 
-        # Split the audio file into smaller parts if it is larger than 5 MB
-        max_file_size = 5 * 1024 * 1024  # 5 MB in bytes
-        audio_file_size = os.path.getsize(output_audio_file_path)
-        output_folder_path = self.input_file_path
-        if audio_file_size > max_file_size:
-            # Split the audio file and create a list of the split files
-            split_audio_files = self.split_audio_file(output_audio_file_path,max_file_size,output_folder_path)
-        else:
-            split_audio_files = [output_audio_file_path]
+    def __call__(self, region):
+        try:
+            start, end = region
+            start = max(0, start - self.include_before)
+            end += self.include_after
+            temp = tempfile.NamedTemporaryFile(suffix='.flac')
+            temp.close()
 
-        # Load the audio files and transcribe them using Google Speech API
-        r = sr.Recognizer()
-        subtitle_text = ""
-        start_time = 0
-        for i, split_audio_file_path in enumerate(split_audio_files):
-            with sr.AudioFile(split_audio_file_path) as source:
-                audio_data = r.record(source)
-            transcript = r.recognize_google(audio_data)
+            command = ["ffmpeg", "-y", "-i" , self.source_path,
+            "-ss", str(start), "-t", str(end-start),
+            "-loglevel", "error", temp.name]
+            subprocess.check_output(command)
+            #os.system('stty sane')
 
-            # Format the transcribed text into the .srt format
-            end_time = start_time + len(transcript)
-            subtitle_text += f"{i+1}\n{datetime.timedelta(seconds=start_time)} --> {datetime.timedelta(seconds=end_time)}\n{transcript}\n\n"
-            start_time = end_time + 1
+            return open(temp.name, "rb").read()
 
-        # Allow the user to select a location to save the subtitle file
-        if self.output_folder_path == "No folder selected":
-            # Display an error message if no output folder has been selected
-            messagebox.showerror("Error", "Please select an output folder")
-        else:
-            # Save the subtitle text to a file
-            translator = Translator()
-            target_language = self.language_var.get()
-            translated_text = translator.translate(subtitle_text, dest=target_language).text
-            output_file_path = os.path.join(self.output_folder_path, f"{os.path.basename(self.input_file_path)}.srt")
-            with open(output_file_path, "w", encoding="utf-8") as f:
-                f.write(translated_text)
+        except KeyboardInterrupt:
+            return
 
-    def split_audio_file(input_file_path, max_file_size, output_folder_path):
-        audio = AudioSegment.from_file(input_file_path)
-        num_segments = math.ceil(len(audio) / max_file_size)
-        segment_size = len(audio) // num_segments
-        segments = [audio[i*segment_size:(i+1)*segment_size] for i in range(num_segments)]
-        output_files = []
-        for i, segment in enumerate(segments):
-            output_file_path = os.path.join(output_folder_path, f"part_{i+1}.wav")
-            segment.export(output_file_path, format="wav")
-            output_files.append(output_file_path)
-        return output_files
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = App(master=root)
-    app.mainloop()
+class SpeechRecognizer(object):
+    def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
+        self.language = language
+        self.rate = rate
+        self.api_key = api_key
+        self.retries = retries
+
+    def __call__(self, data):
+        try:
+            for i in range(self.retries):
+                url = GOOGLE_SPEECH_API_URL.format(lang=self.language, key=self.api_key)
+                headers = {"Content-Type": "audio/x-flac; rate=%d" % self.rate}
+
+                try:
+                    resp = requests.post(url, data=data, headers=headers)
+                except requests.exceptions.ConnectionError:
+                    continue
+
+                for line in resp.content.decode().split("\n"):
+                    try:
+                        line = json.loads(line)
+                        return line['result'][0]['alternative'][0]['transcript'].capitalize()
+                    except:
+                        # no result
+                        continue
+
+        except KeyboardInterrupt:
+            return
+
+
+class Translator(object):
+    def __init__(self, language, api_key, src, dst):
+        self.language = language
+        self.api_key = api_key
+        self.service = build('translate', 'v2',
+                             developerKey=self.api_key)
+        self.src = src
+        self.dst = dst
+
+    def __call__(self, sentence):
+        try:
+            if not sentence: return
+            result = self.service.translations().list(
+                source=self.src,
+                target=self.dst,
+                q=[sentence]
+            ).execute()
+            if 'translations' in result and len(result['translations']) and \
+                            'translatedText' in result['translations'][0]:
+                return result['translations'][0]['translatedText']
+            return ""
+
+        except KeyboardInterrupt:
+            return
+
+
+def extract_audio(filename, channels=1, rate=16000):
+    temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+    command = ["ffmpeg", "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate), "-loglevel", "error", temp.name]
+    subprocess.check_output(command, shell=True)
+    return temp.name, rate
+
+
+def find_speech_regions(filename, frame_width=4096, min_region_size=0.5, max_region_size=6):
+    reader = wave.open(filename)
+    sample_width = reader.getsampwidth()
+    rate = reader.getframerate()
+    n_channels = reader.getnchannels()
+
+    total_duration = reader.getnframes() / rate
+    chunk_duration = float(frame_width) / rate
+
+    n_chunks = int(total_duration / chunk_duration)
+    energies = []
+
+    for i in range(n_chunks):
+        chunk = reader.readframes(frame_width)
+        energies.append(audioop.rms(chunk, sample_width * n_channels))
+
+    threshold = percentile(energies, 0.2)
+
+    elapsed_time = 0
+
+    regions = []
+    region_start = None
+
+    for energy in energies:
+        elapsed_time += chunk_duration
+
+        is_silence = energy <= threshold
+        max_exceeded = region_start and elapsed_time - region_start >= max_region_size
+
+        if (max_exceeded or is_silence) and region_start:
+            if elapsed_time - region_start >= min_region_size:
+                regions.append((region_start, elapsed_time))
+            region_start = None
+
+        elif (not region_start) and (not is_silence):
+            region_start = elapsed_time
+
+    return regions
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('source_path', help="Path to the video or audio file to subtitle", nargs='?')
+    parser.add_argument('-C', '--concurrency', help="Number of concurrent API requests to make", type=int, default=10)
+    parser.add_argument('-o', '--output',
+                        help="Output path for subtitles (by default, subtitles are saved in \
+                        the same directory and name as the source path)")
+    parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
+    parser.add_argument('-S', '--src-language', help="Language spoken in source file", default="en")
+    parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
+    parser.add_argument('-K', '--api-key',
+                        help="The Google Translate API key to be used. (Required for subtitle translation)")
+    parser.add_argument('--list-formats', help="List all available subtitle formats", action='store_true')
+    parser.add_argument('--list-languages', help="List all available source/destination languages", action='store_true')
+
+    args = parser.parse_args()
+
+    if args.list_formats:
+        print("List of formats:")
+        for subtitle_format in FORMATTERS.keys():
+            print("{format}".format(format=subtitle_format))
+        return 0
+
+    if args.list_languages:
+        print("List of all languages:")
+        for code, language in sorted(LANGUAGE_CODES.items()):
+            print("{code}\t{language}".format(code=code, language=language))
+        return 0
+
+    if args.format not in FORMATTERS.keys():
+        print("Subtitle format not supported. Run with --list-formats to see all supported formats.")
+        return 1
+
+    if args.src_language not in LANGUAGE_CODES.keys():
+        print("Source language not supported. Run with --list-languages to see all supported languages.")
+        return 1
+
+    if args.dst_language not in LANGUAGE_CODES.keys():
+        print(
+            "Destination language not supported. Run with --list-languages to see all supported languages.")
+        return 1
+
+    if not args.source_path:
+        print("Error: You need to specify a source path.")
+        return 1
+
+    audio_filename, audio_rate = extract_audio(args.source_path)
+
+    regions = find_speech_regions(audio_filename)
+
+    pool = multiprocessing.Pool(args.concurrency)
+    converter = FLACConverter(source_path=audio_filename)
+    recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
+
+    transcripts = []
+    if regions:
+        try:
+            widgets = ["Converting speech regions to FLAC files: ", Percentage(), ' ', Bar(), ' ', ETA()]
+            pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
+            extracted_regions = []
+            for i, extracted_region in enumerate(pool.imap(converter, regions)):
+                extracted_regions.append(extracted_region)
+                pbar.update(i)
+            pbar.finish()
+
+            widgets = ["Performing speech recognition: ", Percentage(), ' ', Bar(), ' ', ETA()]
+            pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
+
+            for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                transcripts.append(transcript)
+                pbar.update(i)
+            pbar.finish()
+
+            if not is_same_language(args.src_language, args.dst_language):
+                if args.api_key:
+                    google_translate_api_key = args.api_key
+                    translator = Translator(args.dst_language, google_translate_api_key, dst=args.dst_language,
+                                            src=args.src_language)
+                    prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
+                    widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
+                    pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
+                    translated_transcripts = []
+                    for i, transcript in enumerate(pool.imap(translator, transcripts)):
+                        translated_transcripts.append(transcript)
+                        pbar.update(i)
+                    pbar.finish()
+                    transcripts = translated_transcripts
+                else:
+                    print ("Error: Subtitle translation requires specified Google Translate API key.")
+                    return 1
+
+        except KeyboardInterrupt:
+            pbar.finish()
+            pool.terminate()
+            pool.join()
+            print ("transcription")
+            return 1
+
+    timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]
+    formatter = FORMATTERS.get(args.format)
+    formatted_subtitles = formatter(timed_subtitles)
+
+    dest = args.output
+
+    if not dest:
+        base, ext = os.path.splitext(args.source_path)
+        dest = "{base}.{format}".format(base=base, format=args.format)
+
+    if os.path.isdir(dest):
+        dest = os.path.join(dest, os.path.basename(args.source_path) + '.' + args.format)
+
+        with open(dest, "w", encoding="utf-8") as f:
+             f.write(formatted_subtitles)
+
+    print("Subtitles file created at {}".format(dest))
+
+    os.remove(audio_filename)
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
