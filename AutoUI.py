@@ -73,14 +73,14 @@ class App(QMainWindow):
         target_lang = self.target_language_dropdown.currentText()
 
         # Get the path to the Python executable in the virtual environment
-        python_path = os.path.join(sys.prefix, 'bin', 'python')
+        python_path = os.path.join(sys.prefix, 'Scripts', 'python.exe')
 
         # Build the autosub command with the selected options
         autosub_cmd = f"{python_path} AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path}"
 
         # Run the autosub command
         subprocess.run(autosub_cmd, shell=True)
-
+        
         # Update the output file path display with the path of the generated subtitle file
         output_file_path = f"{output_folder_path}/{os.path.splitext(os.path.basename(input_file_path))[0]}.{target_lang}.srt"
         self.output_file_path_display.setText(output_file_path)
