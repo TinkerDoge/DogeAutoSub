@@ -74,9 +74,10 @@ class App(tk.Frame):
         # Split the audio file into smaller parts if it is larger than 5 MB
         max_file_size = 5 * 1024 * 1024  # 5 MB in bytes
         audio_file_size = os.path.getsize(output_audio_file_path)
+        output_folder_path = self.input_file_path
         if audio_file_size > max_file_size:
             # Split the audio file and create a list of the split files
-            split_audio_files = split_audio_file(output_audio_file_path, max_file_size, self.output_folder_path)
+            split_audio_files = self.split_audio_file(output_audio_file_path,max_file_size,output_folder_path)
         else:
             split_audio_files = [output_audio_file_path]
 
