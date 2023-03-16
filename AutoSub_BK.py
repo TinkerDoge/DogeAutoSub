@@ -1,3 +1,4 @@
+#!c:\python27\python.exe
 import argparse
 import audioop
 from googleapiclient.discovery import build
@@ -47,7 +48,7 @@ class FLACConverter(object):
             temp = tempfile.NamedTemporaryFile(suffix='.flac')
             temp.close()
 
-            command = ["E:/Code/DogeAutoSub/thirdparty/ffmpeg/bin/ffmpeg.exe", "-y", "-i" , self.source_path,
+            command = ["ffmpeg", "-y", "-i" , self.source_path,
             "-ss", str(start), "-t", str(end-start),
             "-loglevel", "error", temp.name]
             subprocess.check_output(command)
@@ -77,7 +78,7 @@ class SpeechRecognizer(object):
                 except requests.exceptions.ConnectionError:
                     continue
 
-                for line in resp.content.decode().split("\n"):
+                for line in resp.content.split("\n"):
                     try:
                         line = json.loads(line)
                         return line['result'][0]['alternative'][0]['transcript'].capitalize()
@@ -117,11 +118,11 @@ class Translator(object):
 
 def extract_audio(filename, channels=1, rate=16000):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-    command = ["E:/Code/DogeAutoSub/thirdparty/ffmpeg/bin/ffmpeg.exe", "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate), "-loglevel", "error", temp.name]
+    command = ["ffmpeg", "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate), "-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
 
-    
+
 def find_speech_regions(filename, frame_width=4096, min_region_size=0.5, max_region_size=6):
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
@@ -208,7 +209,7 @@ def main():
         print("Error: You need to specify a source path.")
         return 1
 
-    audio_filename, audio_rate = extract_audio(args.source_path)  # Get first two values
+    audio_filename, audio_rate = extract_audio(args.source_path)
 
     regions = find_speech_regions(audio_filename)
 
@@ -250,14 +251,15 @@ def main():
                     pbar.finish()
                     transcripts = translated_transcripts
                 else:
-                    print ("Error: Subtitle translation requires specified Google Translate API key.")
+                    print "Error: Subtitle translation requires specified Google Translate API key. \
+                    See --help for further information."
                     return 1
 
         except KeyboardInterrupt:
             pbar.finish()
             pool.terminate()
             pool.join()
-            print ("transcription")
+            print "Cancelling transcription"
             return 1
 
     timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]
@@ -270,13 +272,10 @@ def main():
         base, ext = os.path.splitext(args.source_path)
         dest = "{base}.{format}".format(base=base, format=args.format)
 
-    if os.path.isdir(dest):
-        dest = os.path.join(dest, os.path.basename(args.source_path) + '.' + args.format)
+    with open(dest, 'wb') as f:
+        f.write(formatted_subtitles.encode("utf-8"))
 
-        with open(dest, "w", encoding="utf-8") as f:
-             f.write(formatted_subtitles)
-
-    print("Subtitles file created at {}".format(dest))
+    print "Subtitles file created at {}".format(dest)
 
     os.remove(audio_filename)
 
