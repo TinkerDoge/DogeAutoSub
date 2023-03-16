@@ -3,13 +3,12 @@ from tkinter import filedialog
 from tkinter import messagebox
 import datetime
 import os
-import moviepy.editor as mp
-import tempfile
 import speech_recognition as sr
 from moviepy.editor import *
 from googletrans import Translator
 from pydub import AudioSegment
 import math
+from langdetect import detect
 
 class App(tk.Frame):
     def __init__(self, master=None):
