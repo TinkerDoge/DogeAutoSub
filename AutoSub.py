@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 import wave
-
+from deep_translator import GoogleTranslator
 from progressbar import ProgressBar, Percentage, Bar, ETA
 
 from autosub.constants import LANGUAGE_CODES, \
@@ -93,24 +93,14 @@ class Translator(object):
     def __init__(self, language, api_key, src, dst):
         self.language = language
         self.api_key = api_key
-        self.service = build('translate', 'v2',
-                             developerKey=self.api_key)
         self.src = src
         self.dst = dst
 
     def __call__(self, sentence):
         try:
-            if not sentence: return
-            result = self.service.translations().list(
-                source=self.src,
-                target=self.dst,
-                q=[sentence]
-            ).execute()
-            if 'translations' in result and len(result['translations']) and \
-                            'translatedText' in result['translations'][0]:
-                return result['translations'][0]['translatedText']
-            return ""
-
+            translator = GoogleTranslator(source=self.src, target=self.dst)
+            text = translator.translate(sentence)
+            return text
         except KeyboardInterrupt:
             return
 
@@ -236,22 +226,18 @@ def main():
             pbar.finish()
 
             if not is_same_language(args.src_language, args.dst_language):
-                if args.api_key:
-                    google_translate_api_key = args.api_key
-                    translator = Translator(args.dst_language, google_translate_api_key, dst=args.dst_language,
-                                            src=args.src_language)
-                    prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
-                    widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
-                    pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
-                    translated_transcripts = []
-                    for i, transcript in enumerate(pool.imap(translator, transcripts)):
+                translator = GoogleTranslator(source=args.src_language, target=args.dst_language)
+                prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
+                widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
+                pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
+                translated_transcripts = []
+                try:
+                    for i, transcript in enumerate(pool.imap(translator.translate, transcripts)):
                         translated_transcripts.append(transcript)
                         pbar.update(i)
-                    pbar.finish()
-                    transcripts = translated_transcripts
-                else:
-                    print ("Error: Subtitle translation requires specified Google Translate API key.")
-                    return 1
+                except Exception as e:
+                    print("Error in translation: ", e)
+
 
         except KeyboardInterrupt:
             pbar.finish()
