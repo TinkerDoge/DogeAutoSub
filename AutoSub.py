@@ -253,7 +253,9 @@ def main():
         dest = "{base}.{format}".format(base=base, format=args.format)
 
     if os.path.isdir(dest):
-        dest = os.path.join(dest, os.path.basename(args.source_path) + '.' + args.format)
+        base_name = os.path.basename(args.source_path)
+        file_name = os.path.splitext(base_name)[0]  # Remove .mp4 extension from file name
+        dest = os.path.join(dest, file_name + '.' + args.dst_language + '.' + args.format)
 
         with open(dest, "w", encoding="utf-8") as f:
              f.write(formatted_subtitles)
