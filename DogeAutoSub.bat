@@ -1,10 +1,10 @@
 @echo off
 
 set VENV_DIR=D:\BANK\Software\CODE\DogeAutoSub\venv
-
+set PYTHON_DIR =%VENV_DIR%\Scripts\
 call %VENV_DIR%\Scripts\activate
 
-python AutoUI.py %*
+%PYTHON_DIR%python AutoUI.py %*
 
 pause
 
