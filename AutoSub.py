@@ -1,9 +1,9 @@
 import argparse
 import audioop
-from googleapiclient.discovery import build
 import json
 import math
 import multiprocessing
+from multiprocessing import Pool
 import os
 import requests
 import subprocess
@@ -17,6 +17,16 @@ from autosub.constants import LANGUAGE_CODES, \
     GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL
 from autosub.formatters import FORMATTERS
 
+
+
+script_path = os.path.abspath(__file__)
+
+# get directory path of current script
+script_dir = os.path.dirname(script_path)
+
+# create relative path to virtual environment
+venv_path = os.path.join(script_dir, "venv")
+ffmpeg_path = os.path.join(venv_path, "Scripts", "ffmpeg", "bin", "ffmpeg.exe")
 
 def percentile(arr, percent):
     arr = sorted(arr)
@@ -47,7 +57,7 @@ class FLACConverter(object):
             temp = tempfile.NamedTemporaryFile(suffix='.flac')
             temp.close()
 
-            command = ["E:/Code/DogeAutoSub/thirdparty/ffmpeg/bin/ffmpeg.exe", "-y", "-i" , self.source_path,
+            command = [ffmpeg_path, "-y", "-i" , self.source_path,
             "-ss", str(start), "-t", str(end-start),
             "-loglevel", "error", temp.name]
             subprocess.check_output(command)
@@ -88,31 +98,15 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
 
-
-class Translator(object):
-    def __init__(self, language, api_key, src, dst):
-        self.language = language
-        self.api_key = api_key
-        self.src = src
-        self.dst = dst
-
-    def __call__(self, sentence):
-        try:
-            translator = GoogleTranslator(source=self.src, target=self.dst)
-            text = translator.translate(sentence)
-            return text
-        except KeyboardInterrupt:
-            return
-
-
-def extract_audio(filename, channels=1, rate=16000):
+def extract_audio(filename, channels=1, rate=16000, volume="3"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-    command = ["E:/Code/DogeAutoSub/thirdparty/ffmpeg/bin/ffmpeg.exe", "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate), "-loglevel", "error", temp.name]
+    command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
 
     
-def find_speech_regions(filename, frame_width=4096, min_region_size=0.5, max_region_size=6):
+def find_speech_regions(filename, frame_width=3000 , min_region_size=0.01, max_region_size=20):
+
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
     rate = reader.getframerate()
@@ -220,30 +214,32 @@ def main():
             widgets = ["Performing speech recognition: ", Percentage(), ' ', Bar(), ' ', ETA()]
             pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
 
-            for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
-                transcripts.append(transcript)
-                pbar.update(i)
-            pbar.finish()
-
             if not is_same_language(args.src_language, args.dst_language):
-                translator = GoogleTranslator(source=args.src_language, target=args.dst_language)
-                prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
-                widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
-                pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
-                translated_transcripts = []
-                try:
-                    for i, transcript in enumerate(pool.imap(translator.translate, transcripts)):
-                        translated_transcripts.append(transcript)
+                    translator = GoogleTranslator(source=args.src_language,target=args.dst_language)
+                    prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
+                    widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
+                    pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
+                    translated = []
+                    for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                        if transcript is not None:
+                            translated = translator.translate(transcript)
+                            transcripts.append(translated)
+                        else:
+                            transcripts.append(transcript)
                         pbar.update(i)
-                except Exception as e:
-                    print("Error in translation: ", e)
-
+                    pbar.finish()
+            else:
+                for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                    transcripts.append(transcript)
+                    pbar.update(i)
+                pbar.finish()
+            print(transcripts)
 
         except KeyboardInterrupt:
             pbar.finish()
             pool.terminate()
             pool.join()
-            print ("transcription")
+            print("Cancelling transcription")
             return 1
 
     timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]

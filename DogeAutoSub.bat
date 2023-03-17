@@ -1,6 +1,6 @@
 @echo off
 
-set VENV_DIR=E:\Code\DogeAutoSub\venv
+set VENV_DIR=D:\BANK\Software\CODE\DogeAutoSub\venv
 
 call %VENV_DIR%\Scripts\activate
 

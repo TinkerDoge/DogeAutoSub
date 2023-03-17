@@ -31,19 +31,19 @@ class App(QMainWindow):
         self.output_file_path_display = QLabel("No folder selected", self)
         self.output_file_path_display.setGeometry(130, 140, 200, 20)
 
-        # Language selection dropdown for target language
-        self.target_language_label = QLabel("Target Language:", self)
-        self.target_language_label.setGeometry(20, 170, 100, 20)
-        self.target_language_dropdown = QComboBox(self)
-        self.target_language_dropdown.setGeometry(130, 170, 100, 20)
-        self.target_language_dropdown.addItems(["en","fr", "ja", "zh-CN","zh-TW", "vi"])
-
         # Language selection dropdown for source language
         self.source_language_label = QLabel("Source Language:", self)
-        self.source_language_label.setGeometry(20, 200, 100, 20)
+        self.source_language_label.setGeometry(20, 170, 100, 20)
         self.source_language_dropdown = QComboBox(self)
-        self.source_language_dropdown.setGeometry(130, 200, 100, 20)
+        self.source_language_dropdown.setGeometry(130, 170, 100, 20)
         self.source_language_dropdown.addItems(["en","fr", "ja", "zh-CN","zh-TW","vi"])
+
+        # Language selection dropdown for target language
+        self.target_language_label = QLabel("Translate to:", self)
+        self.target_language_label.setGeometry(20, 200, 100, 20)
+        self.target_language_dropdown = QComboBox(self)
+        self.target_language_dropdown.setGeometry(130, 200, 100, 20)
+        self.target_language_dropdown.addItems(["en","fr", "ja", "zh-CN","zh-TW", "vi"])
 
         # Transcription and translation start button
         self.start_button = QPushButton("Start", self)
