@@ -105,7 +105,7 @@ def extract_audio(filename, channels=1, rate=16000, volume="3"):
     return temp.name, rate
 
     
-def find_speech_regions(filename, frame_width=3000 , min_region_size=0.01, max_region_size=20):
+def find_speech_regions(filename, frame_width=4000 , min_region_size=0.05, max_region_size=10):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()

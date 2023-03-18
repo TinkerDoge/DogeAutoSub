@@ -42,9 +42,13 @@ class DogeAutoSub(QWidget):
         self.setStyleSheet(
             """
             background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                                  stop: 0 #CACACA, stop: 1 #878787);
+                                                stop: 0 grey, stop: 1 grey);
+            border-radius: 10px;
             """
-            )
+        )
+
+
+
         # Create a grid layout
         mainlayout = QtWidgets.QGridLayout()
         mainlayout.setSpacing(8)
@@ -101,15 +105,15 @@ class DogeAutoSub(QWidget):
         self.processing_label.setFixedSize(100, 100)
         self.processing_label.hide()
 
-        self.input_file_button.setFixedSize(300, 40)
-        self.output_folder_button.setFixedSize(300, 40)
-        self.output_file_label.setFixedSize(150, 40)
-        self.output_file_path_display.setFixedSize(300, 40)
-        self.source_language_label.setFixedSize(150, 40)
-        self.source_language_dropdown.setFixedSize(140, 40)
-        self.target_language_label.setFixedSize(150, 40)
-        self.target_language_dropdown.setFixedSize(140, 40)
-        self.start_button.setFixedSize(300, 40)
+        self.input_file_button.setFixedSize(300, 30)
+        self.output_folder_button.setFixedSize(300, 30)
+        self.output_file_label.setFixedSize(150, 50)
+        self.output_file_path_display.setFixedSize(300, 30)
+        self.source_language_label.setFixedSize(150, 30)
+        self.source_language_dropdown.setFixedSize(140, 30)
+        self.target_language_label.setFixedSize(120, 30)
+        self.target_language_dropdown.setFixedSize(140, 30)
+        self.start_button.setFixedSize(300, 30)
 
         mainlayout.addWidget(self.input_file_button, 0,0)
         mainlayout.addWidget(self.output_folder_button, 1,0)

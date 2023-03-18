@@ -8,7 +8,7 @@ class Style():
             border: none;
             text-align: center;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 12px;
             padding: 10px;
             font-weight: bold;
         }
@@ -27,7 +27,7 @@ class Style():
             border: 1px solid #F29325;
             border-radius: 10px;
             padding: 5px;
-            font-size: 16px;
+            font-size: 14px;
             background-color: #747E7E;
             color: #002333;
         }
@@ -56,7 +56,7 @@ class Style():
         
         QLabel {
             color: #002333;
-            font-size: 14px;
+            font-size: 12px;
             background-color: transparent;
             border: none;
         }
@@ -68,7 +68,7 @@ class Style():
         """
         QLabel {
             color: #002333;
-            font-size: 16px;
+            font-size: 14px;
             background-color: transparent;
             border: none;
         }
