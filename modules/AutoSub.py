@@ -96,14 +96,14 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
 
-def extract_audio(filename, channels=1, rate=44100, volume="1"):
+def extract_audio(filename, channels=1, rate=44100, volume="5"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
     command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
 
     
-def find_speech_regions(filename, frame_width=2048 , min_region_size=0.1, max_region_size=8):
+def find_speech_regions(filename, frame_width=3600 , min_region_size=0.05, max_region_size=10):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
