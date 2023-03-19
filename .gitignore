@@ -3,3 +3,4 @@ dist
 *.egg-info
 auto_subtitle/__pycache__
 *__pycache__
+modules/ffmpeg/bin/ffmpeg.exe
