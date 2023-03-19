@@ -13,9 +13,9 @@ import wave
 from deep_translator import GoogleTranslator
 from progressbar import ProgressBar, Percentage, Bar, ETA
 
-from autosub.constants import LANGUAGE_CODES, \
+from constants import LANGUAGE_CODES, \
     GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL
-from autosub.formatters import FORMATTERS
+from formatters import FORMATTERS
 
 
 
@@ -24,9 +24,7 @@ script_path = os.path.abspath(__file__)
 # get directory path of current script
 script_dir = os.path.dirname(script_path)
 
-# create relative path to virtual environment
-venv_path = os.path.join(script_dir, "venv")
-ffmpeg_path = os.path.join(venv_path, "Scripts", "ffmpeg", "bin", "ffmpeg.exe")
+ffmpeg_path = os.path.join(script_dir, "ffmpeg", "bin", "ffmpeg.exe")
 
 def percentile(arr, percent):
     arr = sorted(arr)
@@ -98,14 +96,14 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
 
-def extract_audio(filename, channels=1, rate=16000, volume="3"):
+def extract_audio(filename, channels=1, rate=44100, volume="1"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
     command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
 
     
-def find_speech_regions(filename, frame_width=4000 , min_region_size=0.05, max_region_size=10):
+def find_speech_regions(filename, frame_width=2048 , min_region_size=0.1, max_region_size=8):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()

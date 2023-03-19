@@ -1,9 +1,9 @@
 import sys
-from uiStyle import Style
+from modules.uiStyle import Style
 import PySide2
 from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QLabel, QComboBox, QFileDialog
 from PySide2 import QtWidgets, QtCore, QtGui
-from PySide2.QtGui import QMovie
+from PySide2.QtGui import QMovie, QPixmap
 from PySide2.QtCore import QThread
 import subprocess
 import os
@@ -92,18 +92,31 @@ class DogeAutoSub(QWidget):
 
         # Add a loading label and movie
         self.loading_movie = QMovie("src/loading.gif")
-        self.loading_movie.setScaledSize(QtCore.QSize(100, 100))
+        self.loading_movie.setScaledSize(QtCore.QSize(57.1, 100))
         self.loading_label = QLabel(self)
         self.loading_label.setMovie(self.loading_movie)
         self.loading_movie.start()
         self.loading_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.loading_label.setFixedSize(100, 100)
+        self.loading_label.setFixedSize(57.1, 100)
         self.loading_label.hide()
 
         self.processing_label = QLabel("Processing...", self)
-        self.processing_label.setStyleSheet(style.styleLable)
+        self.processing_label.setStyleSheet(style.ProcessLable)
         self.processing_label.setFixedSize(100, 100)
         self.processing_label.hide()
+        
+        self.done_notice = QLabel("Done <3 !", self)
+        self.done_notice.setStyleSheet(style.ProcessLable)
+        self.done_notice.setFixedSize(100, 100)
+        self.done_notice.hide()
+    
+        self.done_pixmap = QPixmap("src/done.jpg").scaled(85.2, 100)
+        self.done_label = QLabel(self)
+        self.done_label.setPixmap(self.done_pixmap)
+        self.done_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.done_label.setFixedSize(85.2, 100)
+        self.done_label.hide()
+
 
         self.input_file_button.setFixedSize(300, 30)
         self.output_folder_button.setFixedSize(300, 30)
@@ -126,7 +139,9 @@ class DogeAutoSub(QWidget):
         mainlayout.addWidget(self.start_button, 6,0)
         brow.addWidget(self.loading_label, 9,0)
         brow.addWidget(self.processing_label, 9,1)
-
+        brow.addWidget(self.done_notice, 9,1)
+        brow.addWidget(self.done_label, 9,0)
+        
         self.input_file_button.clicked.connect(self.select_input_file)
         self.output_folder_button.clicked.connect(self.select_output_folder)
         self.start_button.clicked.connect(self.start_subtitle_thread)
@@ -141,12 +156,16 @@ class DogeAutoSub(QWidget):
         
     def start_loading_animation(self):
         # start the loading animation
+        self.done_label.hide()
+        self.done_notice.hide()
         self.loading_label.show()
         self.processing_label.show()
         self.loading_movie.start()
 
     def stop_loading_animation(self):
         # Stop the loading animation
+        self.done_label.show()
+        self.done_notice.show()
         self.loading_movie.stop()
         self.loading_label.hide()
         self.processing_label.hide()
@@ -176,7 +195,7 @@ class DogeAutoSub(QWidget):
         python_path = os.path.join(sys.prefix, 'Scripts', 'python.exe')
 
         # Build the autosub command with the selected options
-        autosub_cmd = f"{python_path} AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path}"
+        autosub_cmd = f"{python_path} modules/AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path}"
 
         # Run the autosub command
         subprocess.run(autosub_cmd, shell=True)

@@ -108,3 +108,13 @@ class Style():
     }
     """
     )
+    ProcessLable = (
+        """
+        QLabel {
+            color: #002333;
+            font-size: 16px;
+            background-color: transparent;
+            border: none;
+        }
+        """
+    )
