@@ -1,29 +1,29 @@
 import argparse
 import audioop
+import json
 import math
 import multiprocessing
+from multiprocessing import Pool
 import os
+import requests
 import subprocess
 import sys
 import tempfile
 import wave
-import json
-import requests
-import speech_recognition as sr
-import chardet
-
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:
-    JSONDecodeError = ValueError
-
 from deep_translator import GoogleTranslator
 from progressbar import ProgressBar, Percentage, Bar, ETA
-from constants import GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL,LANGUAGETRANS
+
+from constants import LANGUAGE_CODES, \
+    GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL
 from formatters import FORMATTERS
 
+
+
 script_path = os.path.abspath(__file__)
+
+# get directory path of current script
 script_dir = os.path.dirname(script_path)
+
 ffmpeg_path = os.path.join(script_dir, "ffmpeg", "bin", "ffmpeg.exe")
 
 def percentile(arr, percent):
@@ -40,6 +40,7 @@ def percentile(arr, percent):
 def is_same_language(lang1, lang2):
     return lang1.split("-")[0] == lang2.split("-")[0]
 
+
 class FLACConverter(object):
     def __init__(self, source_path, include_before=0.25, include_after=0.25):
         self.source_path = source_path
@@ -53,39 +54,17 @@ class FLACConverter(object):
             end += self.include_after
             temp = tempfile.NamedTemporaryFile(suffix='.flac')
             temp.close()
-            command = [ffmpeg_path, "-y", "-i" , self.source_path, "-ss", str(start), "-t", str(end-start),"-loglevel", "error", temp.name]
+
+            command = [ffmpeg_path, "-y", "-i" , self.source_path,
+            "-ss", str(start), "-t", str(end-start),
+            "-loglevel", "error", temp.name]
             subprocess.check_output(command)
+            #os.system('stty sane')
+
             return open(temp.name, "rb").read()
 
         except KeyboardInterrupt:
             return
-
-class SpeechRecognizerGG:
-    def __init__(self, language="en-US", rate=44100, retries=3, encoding="utf-8"):
-        self.language = language
-        self.rate = rate
-        self.retries = retries
-        self.encoding = encoding
-
-    def __call__(self, data):
-        # Detect encoding of input data
-        encoding = chardet.detect(data)['encoding']
-        # Decode input data using detected encoding
-        data = data.decode(encoding)
-        
-        try:
-            with sr.Recognizer() as recognizer:
-                audio = sr.AudioData(data, self.rate, 2)
-                for _ in range(self.retries):
-                    try:
-                        transcript = recognizer.recognize_google(audio, language=self.language)
-                        return transcript[:1].upper() + transcript[1:]
-                    except sr.RequestError:
-                        continue
-        except KeyboardInterrupt:
-            return None
-        
-        return None
 
 
 class SpeechRecognizer(object):
@@ -117,14 +96,14 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
 
-
-def extract_audio(filename, channels=1, rate=44100, volume="1"):
+def extract_audio(filename, channels=1, rate=44100, volume="5"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
     command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
+
     
-def find_speech_regions(filename, frame_width=4096 , min_region_size=0.1, max_region_size=10):
+def find_speech_regions(filename, frame_width=3600 , min_region_size=0.05, max_region_size=10):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
@@ -165,34 +144,59 @@ def find_speech_regions(filename, frame_width=4096 , min_region_size=0.1, max_re
     return regions
 
 
-def languagecode_tranform(language="en-US"):
-    if language in LANGUAGETRANS:
-        return LANGUAGETRANS[language]
-    else:
-        return language
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('source_path', help="Path to the video or audio file to subtitle", nargs='?')
     parser.add_argument('-C', '--concurrency', help="Number of concurrent API requests to make", type=int, default=10)
-    parser.add_argument('-o', '--output')
+    parser.add_argument('-o', '--output',
+                        help="Output path for subtitles (by default, subtitles are saved in \
+                        the same directory and name as the source path)")
     parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
     parser.add_argument('-S', '--src-language', help="Language spoken in source file", default="en")
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
+    parser.add_argument('-K', '--api-key',
+                        help="The Google Translate API key to be used. (Required for subtitle translation)")
+    parser.add_argument('--list-formats', help="List all available subtitle formats", action='store_true')
+    parser.add_argument('--list-languages', help="List all available source/destination languages", action='store_true')
+
     args = parser.parse_args()
+
+    if args.list_formats:
+        print("List of formats:")
+        for subtitle_format in FORMATTERS.keys():
+            print("{format}".format(format=subtitle_format))
+        return 0
+
+    if args.list_languages:
+        print("List of all languages:")
+        for code, language in sorted(LANGUAGE_CODES.items()):
+            print("{code}\t{language}".format(code=code, language=language))
+        return 0
+
+    if args.format not in FORMATTERS.keys():
+        print("Subtitle format not supported. Run with --list-formats to see all supported formats.")
+        return 1
+
+    if args.src_language not in LANGUAGE_CODES.keys():
+        print("Source language not supported. Run with --list-languages to see all supported languages.")
+        return 1
+
+    if args.dst_language not in LANGUAGE_CODES.keys():
+        print(
+            "Destination language not supported. Run with --list-languages to see all supported languages.")
+        return 1
 
     if not args.source_path:
         print("Error: You need to specify a source path.")
         return 1
 
-    audio_filename, audio_rate = extract_audio(args.source_path)
+    audio_filename, audio_rate = extract_audio(args.source_path)  # Get first two values
+
     regions = find_speech_regions(audio_filename)
-    codeTransSrc = languagecode_tranform(language=args.src_language)
-    codeTransTgr = languagecode_tranform(language=args.dst_language)
+
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
-    #recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate)
 
     transcripts = []
     if regions:
@@ -209,8 +213,8 @@ def main():
             pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
 
             if not is_same_language(args.src_language, args.dst_language):
-                    translator = GoogleTranslator(source=codeTransSrc,target=codeTransTgr)
-                    prompt = "Translating from {0} to {1}: ".format(args.src_language,args.dst_language)
+                    translator = GoogleTranslator(source=args.src_language,target=args.dst_language)
+                    prompt = "Translating from {0} to {1}: ".format(args.src_language, args.dst_language)
                     widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
                     pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
                     translated = []
@@ -239,6 +243,7 @@ def main():
     timed_subtitles = [(r, t) for r, t in zip(regions, transcripts) if t]
     formatter = FORMATTERS.get(args.format)
     formatted_subtitles = formatter(timed_subtitles)
+
     dest = args.output
 
     if not dest:
@@ -254,8 +259,11 @@ def main():
              f.write(formatted_subtitles)
 
     print("Subtitles file created at {}".format(dest))
+
     os.remove(audio_filename)
+
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())

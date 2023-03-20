@@ -79,13 +79,13 @@ class DogeAutoSub(QWidget):
         self.source_language_label.setStyleSheet(style.styleLable)
         self.source_language_dropdown = QComboBox(self)
         self.source_language_dropdown.setStyleSheet(style.style_bt_standard)
-        self.source_language_dropdown.addItems(["en","fr", "ja", "zh-CN","zh-TW","vi"])
+        self.source_language_dropdown.addItems(["en-US","en-GB", "es-ES", "zh-CN","fr-FR", "de-DE","it-IT","cmn-Hans-CN","zh-CN","ja-JP", "ko-KR", "vi-VN"])
         # Language selection dropdown for target language
         self.target_language_label = QLabel("Translate to:", self)
         self.target_language_label.setStyleSheet(style.styleLable)
         self.target_language_dropdown = QComboBox(self)
         self.target_language_dropdown.setStyleSheet(style.style_bt_standard)
-        self.target_language_dropdown.addItems(["en","fr", "ja", "zh-CN","zh-TW", "vi"])
+        self.target_language_dropdown.addItems(["en-US","en-GB", "es-ES", "zh-CN","fr-FR", "de-DE","it-IT","cmn-Hans-CN","zh-CN","ja-JP", "ko-KR", "vi-VN"])
         # Transcription and translation start button
         self.start_button = QPushButton("START", self)
         self.start_button.setStyleSheet(style.style_bt_standard)
