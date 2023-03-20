@@ -69,8 +69,8 @@ class SpeechRecognizerGG:
             r = sr.Recognizer()
             with sr.AudioFile(self.audioFile) as source:
                 audio = r.record(source)
-                line = r.recognize_google(audio)
-                for transcript in line().split("\n"):
+                text = r.recognize_google(audio)
+                for transcript in text().split("\n"):
                     try:
                         transcript = json.loads(transcript)
                         return transcript['result'][0]['alternative'][0]['transcript'].capitalize()
@@ -109,13 +109,13 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
 
-def extract_audio(filename, channels=1, rate=44100, volume="1"):
+def extract_audio(filename, channels=1, rate=44100, volume="6"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
     command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
     subprocess.check_output(command, shell=True)
     return temp.name, rate
     
-def find_speech_regions(filename, frame_width=4096 , min_region_size=0.1, max_region_size=10):
+def find_speech_regions(filename, frame_width=3500 , min_region_size=0.4, max_region_size=12):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
@@ -204,7 +204,7 @@ def main():
                     widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
                     pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
                     translated = []
-                    for i, transcript in enumerate(pool.imap(recognizerGG, extracted_regions)):
+                    for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
                         if transcript is not None:
                             translated = translator.translate(transcript)
                             transcripts.append(translated)
@@ -213,7 +213,7 @@ def main():
                         pbar.update(i)
                     pbar.finish()
             else:
-                for i, transcript in enumerate(pool.imap(recognizerGG, extracted_regions)):
+                for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
                     transcripts.append(transcript)
                     pbar.update(i)
                 pbar.finish()
