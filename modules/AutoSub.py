@@ -61,32 +61,21 @@ class FLACConverter(object):
             return
 
 class SpeechRecognizerGG:
-    def __init__(self, language="en-US", rate=44100, retries=3, encoding="utf-8"):
+    def __init__(self, language="en-US"):
         self.language = language
-        self.rate = rate
-        self.retries = retries
-        self.encoding = encoding
 
     def __call__(self, data):
-        # Detect encoding of input data
-        encoding = chardet.detect(data)['encoding']
-        # Decode input data using detected encoding
-        data = data.decode(encoding)
-        
-        try:
-            with sr.Recognizer() as recognizer:
-                audio = sr.AudioData(data, self.rate, 2)
-                for _ in range(self.retries):
-                    try:
-                        transcript = recognizer.recognize_google(audio, language=self.language)
-                        return transcript[:1].upper() + transcript[1:]
-                    except sr.RequestError:
-                        continue
-        except KeyboardInterrupt:
-            return None
-        
-        return None
-
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(data)  as source:
+            audio = recognizer.record(source)
+            transcript = recognizer.recognize_google(audio,self.language)
+            for line in transcript().split("\n"):
+                try:
+                    line = json.loads(line)
+                    return line['result'][0]['alternative'][0]['transcript'].capitalize()
+                except:
+                # no result
+                    continue
 
 class SpeechRecognizer(object):
     def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
@@ -192,7 +181,7 @@ def main():
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
-    #recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate)
+    recognizerGG = SpeechRecognizerGG(language=args.src_language)
 
     transcripts = []
     if regions:
@@ -214,7 +203,7 @@ def main():
                     widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
                     pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
                     translated = []
-                    for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                    for i, transcript in enumerate(pool.imap(recognizerGG, extracted_regions)):
                         if transcript is not None:
                             translated = translator.translate(transcript)
                             transcripts.append(translated)
@@ -223,7 +212,7 @@ def main():
                         pbar.update(i)
                     pbar.finish()
             else:
-                for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                for i, transcript in enumerate(pool.imap(recognizerGG, extracted_regions)):
                     transcripts.append(transcript)
                     pbar.update(i)
                 pbar.finish()
