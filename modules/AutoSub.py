@@ -61,21 +61,24 @@ class FLACConverter(object):
             return
 
 class SpeechRecognizerGG:
-    def __init__(self, language="en-US"):
-        self.language = language
-
-    def __call__(self, data):
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(data)  as source:
-            audio = recognizer.record(source)
-            transcript = recognizer.recognize_google(audio,self.language)
-            for line in transcript().split("\n"):
-                try:
-                    line = json.loads(line)
-                    return line['result'][0]['alternative'][0]['transcript'].capitalize()
-                except:
-                # no result
-                    continue
+    def __init__(self,audioFile = "audio_filename"):
+        self.audioFile = audioFile
+        
+    def __call__(self):
+        try:
+            r = sr.Recognizer()
+            with sr.AudioFile(self.audioFile) as source:
+                audio = r.record(source)
+                line = r.recognize_google(audio)
+                for transcript in line().split("\n"):
+                    try:
+                        transcript = json.loads(transcript)
+                        return transcript['result'][0]['alternative'][0]['transcript'].capitalize()
+                    except:
+                    # no result
+                        continue
+        except KeyboardInterrupt:
+            return
 
 class SpeechRecognizer(object):
     def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
@@ -105,7 +108,6 @@ class SpeechRecognizer(object):
 
         except KeyboardInterrupt:
             return
-
 
 def extract_audio(filename, channels=1, rate=44100, volume="1"):
     temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
@@ -153,7 +155,6 @@ def find_speech_regions(filename, frame_width=4096 , min_region_size=0.1, max_re
 
     return regions
 
-
 def languagecode_tranform(language="en-US"):
     if language in LANGUAGETRANS:
         return LANGUAGETRANS[language]
@@ -181,7 +182,7 @@ def main():
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
-    recognizerGG = SpeechRecognizerGG(language=args.src_language)
+    recognizerGG = SpeechRecognizerGG(audioFile = audio_filename)
 
     transcripts = []
     if regions:
