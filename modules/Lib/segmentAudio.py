@@ -149,7 +149,7 @@ def silence_removal(signal, sampling_rate, st_win, st_step, smooth_window=0.5,
     return seg_limits
 
 
-def remove_silent_segments(filename, smoothing_window=1.0, weight=0.1):
+def remove_silent_segments(filename, smoothing_window=1.0, weight=0.05):
     if not os.path.isfile(filename):
         raise Exception("Input audio file not found!")
 

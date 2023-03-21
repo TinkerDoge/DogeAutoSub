@@ -1,6 +1,5 @@
 import sys
 from modules.uiStyle import Style
-import PySide2
 from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QLabel, QComboBox, QFileDialog
 from PySide2 import QtWidgets, QtCore, QtGui
 from PySide2.QtGui import QMovie, QPixmap

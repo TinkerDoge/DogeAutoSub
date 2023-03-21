@@ -42,7 +42,7 @@ def percentile(arr, percent):
 def is_same_language(lang1, lang2):
     return lang1.split("-")[0] == lang2.split("-")[0]
 
-def extract_audio(filename, channels=1, rate=16000, volume="3"):
+def extract_audio(filename, channels=1, rate=16000, volume="8"):
     try:
         temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
         command = [ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y", "-i", filename,"-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}", "-vn", "-f", "wav", temp.name]
@@ -124,7 +124,7 @@ class SpeechRecognizer(object):
         except KeyboardInterrupt:
             return
     
-def find_speech_regions(filename, frame_width=3500 , min_region_size=0.2, max_region_size=10):
+def find_speech_regions(filename, frame_width=3300 , min_region_size=0.3, max_region_size=12):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
