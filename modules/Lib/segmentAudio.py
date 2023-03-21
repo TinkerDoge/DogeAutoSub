@@ -5,7 +5,7 @@ import Lib.trainAudio as TA
 from pydub import AudioSegment
 import Lib.featureExtraction as FE
 import scipy.io.wavfile as wavfile
-
+  
 def read_audio_file(filename):
     sampling_rate = -1
     signal = np.array([])
@@ -149,7 +149,7 @@ def silence_removal(signal, sampling_rate, st_win, st_step, smooth_window=0.5,
     return seg_limits
 
 
-def remove_silent_segments(filename, smoothing_window=1.0, weight=0.05):
+def remove_silent_segments(filename, smoothing_window=1.5, weight=0.05):
     if not os.path.isfile(filename):
         raise Exception("Input audio file not found!")
 

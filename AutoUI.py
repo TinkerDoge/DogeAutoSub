@@ -1,6 +1,6 @@
 import sys
 from modules.uiStyle import Style
-from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QLabel, QComboBox, QFileDialog
+from PySide2.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QLabel, QComboBox, QFileDialog,QCheckBox
 from PySide2 import QtWidgets, QtCore, QtGui
 from PySide2.QtGui import QMovie, QPixmap
 from PySide2.QtCore import QThread
@@ -13,6 +13,7 @@ class SubtitleThread(QThread):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        
     
     def run(self):
         # Display the loading GIF while the task is in progress
@@ -45,9 +46,6 @@ class DogeAutoSub(QWidget):
             border-radius: 10px;
             """
         )
-
-
-
         # Create a grid layout
         mainlayout = QtWidgets.QGridLayout()
         mainlayout.setSpacing(8)
@@ -115,6 +113,9 @@ class DogeAutoSub(QWidget):
         self.done_label.setAlignment(QtCore.Qt.AlignCenter)
         self.done_label.setFixedSize(85.2, 100)
         self.done_label.hide()
+        
+        #self.skip_silent_segments_checkbox = QCheckBox("Skip silent segments?", self)
+        #self.skip_silent_segments_checkbox.setStyleSheet(style.styleLable)
 
 
         self.input_file_button.setFixedSize(300, 30)
@@ -135,7 +136,8 @@ class DogeAutoSub(QWidget):
         trow.addWidget(self.target_language_label, 4,1)
         trow.addWidget(self.source_language_dropdown, 5,0)
         trow.addWidget(self.target_language_dropdown, 5,1)
-        mainlayout.addWidget(self.start_button, 6,0)
+        #trow.addWidget(self.skip_silent_segments_checkbox, 6, 0)
+        mainlayout.addWidget(self.start_button, 7,0)
         brow.addWidget(self.loading_label, 9,0)
         brow.addWidget(self.processing_label, 9,1)
         brow.addWidget(self.done_notice, 9,1)
@@ -181,11 +183,23 @@ class DogeAutoSub(QWidget):
         if self.output_folder_path:
             self.output_file_path_display.setText(self.output_folder_path)
 
+    def skip_silent_segCheck(self):
+        # Get the current state of the checkbox
+        skip_silent_segments = self.skip_silent_segments_checkbox.isChecked()
+       
     def process_audio_file(self):
         # Get selected file path and output folder path
         input_file_path = self.input_file_path
         output_folder_path = self.output_folder_path
-
+        # Get the value of the checkbox
+        """
+        skip = self.skip_silent_segments_checkbox.isChecked()
+        if skip :
+            skip_value = True
+        else:
+            skip_value = False
+        """    
+      
         # Get selected source and target languages
         source_lang = self.source_language_dropdown.currentText()
         target_lang = self.target_language_dropdown.currentText()
@@ -195,7 +209,7 @@ class DogeAutoSub(QWidget):
 
         # Build the autosub command with the selected options
         autosub_cmd = f"{python_path} modules/AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path}"
-
+        print(autosub_cmd)
         # Run the autosub command
         subprocess.run(autosub_cmd, shell=True)
         
