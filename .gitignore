@@ -5,3 +5,4 @@ auto_subtitle/__pycache__
 *__pycache__
 modules/ffmpeg/bin/ffmpeg.exe
 /venv
+modules/Lib/ffmpeg/bin/ffmpeg.exe
