@@ -60,26 +60,6 @@ class FLACConverter(object):
         except KeyboardInterrupt:
             return
 
-class SpeechRecognizerGG:
-    def __init__(self,audioFile = "audio_filename"):
-        self.audioFile = audioFile
-        
-    def __call__(self):
-        try:
-            r = sr.Recognizer()
-            with sr.AudioFile(self.audioFile) as source:
-                audio = r.record(source)
-                text = r.recognize_google(audio)
-                for transcript in text().split("\n"):
-                    try:
-                        transcript = json.loads(transcript)
-                        return transcript['result'][0]['alternative'][0]['transcript'].capitalize()
-                    except:
-                    # no result
-                        continue
-        except KeyboardInterrupt:
-            return
-
 class SpeechRecognizer(object):
     def __init__(self, language="en", rate=44100, retries=3, api_key=GOOGLE_SPEECH_API_KEY):
         self.language = language
@@ -182,7 +162,6 @@ def main():
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
-    recognizerGG = SpeechRecognizerGG(audioFile = audio_filename)
 
     transcripts = []
     if regions:
