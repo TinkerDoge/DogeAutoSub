@@ -5,22 +5,25 @@ import multiprocessing
 import os
 import subprocess
 import sys
-import tempfile
 import wave
 import json
 import requests
-import speech_recognition as sr
-import chardet
+import numpy as np
+import shlex
 
 try:
-    from json.decoder import JSONDecodeError
+    from shlex import quote
 except ImportError:
-    JSONDecodeError = ValueError
+    from pipes import quote
 
 from deep_translator import GoogleTranslator
 from progressbar import ProgressBar, Percentage, Bar, ETA
 from constants import GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL,LANGUAGETRANS
 from formatters import FORMATTERS
+
+from Lib.segmentAudio import remove_silent_segments
+
+import tempfile
 
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
@@ -36,9 +39,42 @@ def percentile(arr, percent):
     d1 = arr[int(c)] * (k - f)
     return d0 + d1
 
-
 def is_same_language(lang1, lang2):
     return lang1.split("-")[0] == lang2.split("-")[0]
+
+def extract_audio(filename, channels=1, rate=16000, volume="3"):
+    try:
+        temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        command = [ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y", "-i", filename,"-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}", "-vn", "-f", "wav", temp.name]
+        ret = subprocess.run(command).returncode
+        subprocess.check_output(command, shell=True)
+        remove_silent_segments(temp.name)
+        return temp.name, rate
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+"""
+def extract_audio(filename, channels=1, rate=44100, volume="6"):
+    temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+    command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
+    subprocess.check_output(command, shell=True)
+    return temp.name, rate
+"""
+
+def convert_samplerate(audio_path, desired_sample_rate):
+    sox_cmd = "sox {} --type raw --bits 16 --channels 1 --rate {} --encoding signed-integer \
+        --endian little --compression 0.0 --no-dither norm -3.0 - ".format(
+        quote(audio_path), desired_sample_rate)
+    try:
+        output = subprocess.check_output(
+            shlex.split(sox_cmd), stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"SoX returned non-zero status: {e.stderr}")
+    except OSError as e:
+        raise OSError(e.errno, f"SoX not found, use {desired_sample_rate}hz files or install it: {e.strerror}")
+    return np.frombuffer(output, np.int16)
+
 
 class FLACConverter(object):
     def __init__(self, source_path, include_before=0.25, include_after=0.25):
@@ -56,7 +92,6 @@ class FLACConverter(object):
             command = [ffmpeg_path, "-y", "-i" , self.source_path, "-ss", str(start), "-t", str(end-start),"-loglevel", "error", temp.name]
             subprocess.check_output(command)
             return open(temp.name, "rb").read()
-
         except KeyboardInterrupt:
             return
 
@@ -88,14 +123,8 @@ class SpeechRecognizer(object):
 
         except KeyboardInterrupt:
             return
-
-def extract_audio(filename, channels=1, rate=44100, volume="6"):
-    temp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-    command = [ffmpeg_path, "-y", "-i", filename, "-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}","-loglevel", "error", temp.name]
-    subprocess.check_output(command, shell=True)
-    return temp.name, rate
     
-def find_speech_regions(filename, frame_width=3500 , min_region_size=0.4, max_region_size=12):
+def find_speech_regions(filename, frame_width=3500 , min_region_size=0.2, max_region_size=10):
 
     reader = wave.open(filename)
     sample_width = reader.getsampwidth()
@@ -162,7 +191,7 @@ def main():
     pool = multiprocessing.Pool(args.concurrency)
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
-
+ 
     transcripts = []
     if regions:
         try:

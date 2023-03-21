@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import sklearn.svm
 
@@ -15,7 +12,6 @@ def train_svm(features, c_param, kernel='linear'):
                           gamma='auto')
     svm.fit(feature_matrix, labels)
     return svm
-
 
 def normalize_features(features):
     temp_feats = np.array([])
@@ -38,7 +34,6 @@ def normalize_features(features):
             ft[n_samples, :] = (ft[n_samples, :] - mean) / std
         features_norm.append(ft)
     return features_norm, mean, std
-
 
 def features_to_matrix(features):
     labels = np.array([])

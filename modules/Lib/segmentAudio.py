@@ -1,20 +1,16 @@
 import os
-import logger
 import numpy as np
 
-import trainAudio as TA
+import Lib.trainAudio as TA
 from pydub import AudioSegment
-import featureExtraction as FE
+import Lib.featureExtraction as FE
 import scipy.io.wavfile as wavfile
 
-_logger = logger.setup_applevel_logger(__name__)
-
-
-def read_audio_file(input_file):
+def read_audio_file(filename):
     sampling_rate = -1
     signal = np.array([])
     try:
-        audiofile = AudioSegment.from_file(input_file)
+        audiofile = AudioSegment.from_file(filename)
         data = np.array([])
         if audiofile.sample_width == 2:
             data = np.fromstring(audiofile._data, np.int16)
@@ -28,7 +24,7 @@ def read_audio_file(input_file):
                 temp_signal.append(data[chn::audiofile.channels])
             signal = np.array(temp_signal).T
     except:
-        _logger.error("File not found or other I/O error. (DECODING FAILED)")
+        KeyboardInterrupt
 
     if signal.ndim == 2 and signal.shape[1] == 1:
         signal = signal.flatten()
@@ -153,14 +149,14 @@ def silence_removal(signal, sampling_rate, st_win, st_step, smooth_window=0.5,
     return seg_limits
 
 
-def remove_silent_segments(input_file, smoothing_window=1.0, weight=0.1):
-    if not os.path.isfile(input_file):
+def remove_silent_segments(filename, smoothing_window=1.0, weight=0.1):
+    if not os.path.isfile(filename):
         raise Exception("Input audio file not found!")
 
-    [fs, x] = read_audio_file(input_file)
+    [fs, x] = read_audio_file(filename)
     segmentLimits = silence_removal(x, fs, 0.05, 0.05, smoothing_window, weight)
 
     for i, s in enumerate(segmentLimits):
-        strOut = "{0:s}_{1:.3f}-{2:.3f}.wav".format(input_file[0:-4], s[0], s[1])
+        strOut = "{0:s}_{1:.3f}-{2:.3f}.wav".format(filename[0:-4], s[0], s[1])
         wavfile.write(strOut, fs, x[int(fs * s[0]):int(fs * s[1])])
 

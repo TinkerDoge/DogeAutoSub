@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from scipy.fftpack import fft
 from scipy.fftpack.realtransforms import dct
