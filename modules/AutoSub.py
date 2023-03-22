@@ -14,8 +14,6 @@ from progressbar import ProgressBar, Percentage, Bar, ETA
 from constants import GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL,LANGUAGETRANS
 from formatters import FORMATTERS
 
-#from Lib.segmentAudio import remove_silent_segments
-
 import tempfile
 
 script_path = os.path.abspath(__file__)
@@ -41,13 +39,6 @@ def extract_audio(filename, channels=1, rate=16000, volume="8"):
         command = [ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y", "-i", filename,"-ac", str(channels), "-ar", str(rate),'-filter:a', f"volume={volume}", "-vn", "-f", "wav", temp.name]
         ret = subprocess.run(command).returncode
         subprocess.check_output(command, shell=True)
-        """
-        if skip == True:
-            print("Removing Silent Segments")
-            remove_silent_segments(temp.name)
-            return temp.name, rate
-        else:
-        """
         return temp.name, rate
     except Exception as e:
         print(e)
@@ -186,7 +177,6 @@ def main():
     parser.add_argument('source_path', help="Path to the video or audio file to subtitle", nargs='?')
     parser.add_argument('-C', '--concurrency', help="Number of concurrent API requests to make", type=int, default=10)
     parser.add_argument('-o', '--output')
-    #parser.add_argument('-sk', '--skip')
     parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
     parser.add_argument('-S', '--src-language', help="Language spoken in source file", default="en-US")
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en-US")
