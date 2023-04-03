@@ -9,6 +9,7 @@ import wave
 import json
 import requests
 
+from googletrans import Translator
 from deep_translator import GoogleTranslator
 from progressbar import ProgressBar, Percentage, Bar, ETA
 from constants import GOOGLE_SPEECH_API_KEY, GOOGLE_SPEECH_API_URL,LANGUAGETRANS
@@ -44,36 +45,6 @@ def extract_audio(filename, channels=1, rate=16000, volume="8"):
         print(e)
         sys.exit(1)
 
-"""
-class Translator(object): # pylint: disable=too-few-public-methods
-    def __init__(self, language, api_key, src, dst):
-        self.language = language
-        self.api_key = api_key
-        self.service = build('translate', 'v2',
-                             developerKey=self.api_key)
-        self.src = src
-        self.dst = dst
-
-    def __call__(self, sentence):
-        try:
-            if not sentence:
-                return None
-
-            result = self.service.translations().list( # pylint: disable=no-member
-                source=self.src,
-                target=self.dst,
-                q=[sentence]
-            ).execute()
-
-            if 'translations' in result and result['translations'] and \
-                'translatedText' in result['translations'][0]:
-                return result['translations'][0]['translatedText']
-
-            return None
-
-        except KeyboardInterrupt:
-            return None
-"""
 
 class FLACConverter(object):
     def __init__(self, source_path, include_before=0.25, include_after=0.25):
@@ -180,6 +151,7 @@ def main():
     parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
     parser.add_argument('-S', '--src-language', help="Language spoken in source file", default="en-US")
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en-US")
+    parser.add_argument('-E', '--engine', help="Translate Engine", default="DeepTranslator")
     args = parser.parse_args()
     if not args.source_path:
         print("Error: You need to specify a source path.")
@@ -187,6 +159,7 @@ def main():
 
     audio_filename, audio_rate = extract_audio(args.source_path)
     
+    enigne = args.engine
     regions = find_speech_regions(audio_filename)
     codeTransSrc = languagecode_tranform(language=args.src_language)
     codeTransTgr = languagecode_tranform(language=args.dst_language)
@@ -194,6 +167,7 @@ def main():
     converter = FLACConverter(source_path=audio_filename)
     recognizer = SpeechRecognizer(language=args.src_language, rate=audio_rate, api_key=GOOGLE_SPEECH_API_KEY)
     transcripts = []
+    translated = []
     transcount = 0
     if regions:
         try:
@@ -209,25 +183,43 @@ def main():
             pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
 
             if not is_same_language(args.src_language, args.dst_language):
-                    translator = GoogleTranslator(source=codeTransSrc,target=codeTransTgr)
                     prompt = "Translating from {0} to {1}: ".format(args.src_language,args.dst_language)
                     widgets = [prompt, Percentage(), ' ', Bar(), ' ', ETA()]
                     pbar = ProgressBar(widgets=widgets, maxval=len(regions)).start()
-                    translated = []
+                    if enigne == "DeepTranslator":
+                        translator = GoogleTranslator(source=codeTransSrc,target=codeTransTgr)
+                        for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                            if transcript is not None and not transcript.isdigit():
+                                transcount += 1
+                                translated = translator.translate(transcript)
+                                transcripts.append(translated)
+                            else:
+                                transcripts.append(transcript)
+                        pbar.update(i)    
+                    else: 
+                        translator = Translator()
+                        for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
+                            if transcript is not None and not transcript.isdigit():
+                                transcount += 1
+                                if isinstance(transcript, str):
+                                    translated = translator.translate(transcript, src=codeTransSrc,dest=codeTransTgr)
+                                    transcript = translated.text
+                                transcripts.append(transcript)
+                            else:
+                                transcripts.append(transcript)
+                            pbar.update(i)
+                        pbar.finish()
+
+            else:
                     for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
-                        if transcript != None:
-                            transcount = (transcount + 1)
-                            translated = translator.translate(transcript)
-                            transcripts.append(translated)
+                        if transcript is not None and not transcript.isdigit():
+                            transcripts.append(transcript)
+                            transcount += 1
                         else:
                             transcripts.append(transcript)
                         pbar.update(i)
-                    pbar.finish()
-            else:
-                for i, transcript in enumerate(pool.imap(recognizer, extracted_regions)):
-                    transcripts.append(transcript)
-                    pbar.update(i)
-                pbar.finish()    
+                    pbar.finish()    
+                
             print(transcripts)
             total_words = sum([len(transcript.split()) for transcript in transcripts if transcript is not None])
             print(f"Total words: {total_words}")

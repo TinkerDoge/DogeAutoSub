@@ -83,6 +83,14 @@ class DogeAutoSub(QWidget):
         self.target_language_dropdown = QComboBox(self)
         self.target_language_dropdown.setStyleSheet(style.style_bt_standard)
         self.target_language_dropdown.addItems(["en-US","en-GB", "es-ES", "zh-CN","fr-FR", "de-DE","it-IT","cmn-Hans-CN","zh-CN","ja-JP", "ko-KR", "vi-VN"])
+        
+        # Translate engine select 
+        self.target_engine_label = QLabel("Translate Engine:", self)
+        self.target_engine_label.setStyleSheet(style.styleLable)
+        self.target_engine = QComboBox(self)
+        self.target_engine.setStyleSheet(style.style_bt_standard)
+        self.target_engine.addItems(["DeepTranslator","GoogleTranslate"])
+        
         # Transcription and translation start button
         self.start_button = QPushButton("START", self)
         self.start_button.setStyleSheet(style.style_bt_standard)
@@ -126,6 +134,8 @@ class DogeAutoSub(QWidget):
         self.source_language_dropdown.setFixedSize(140, 30)
         self.target_language_label.setFixedSize(120, 30)
         self.target_language_dropdown.setFixedSize(140, 30)
+        self.target_engine_label.setFixedSize(140, 30)
+        self.target_engine.setFixedSize(140, 30)
         self.start_button.setFixedSize(300, 30)
 
         mainlayout.addWidget(self.input_file_button, 0,0)
@@ -136,7 +146,8 @@ class DogeAutoSub(QWidget):
         trow.addWidget(self.target_language_label, 4,1)
         trow.addWidget(self.source_language_dropdown, 5,0)
         trow.addWidget(self.target_language_dropdown, 5,1)
-        #trow.addWidget(self.skip_silent_segments_checkbox, 6, 0)
+        trow.addWidget(self.target_engine_label, 6, 0)
+        trow.addWidget(self.target_engine, 6, 1)
         mainlayout.addWidget(self.start_button, 7,0)
         brow.addWidget(self.loading_label, 9,0)
         brow.addWidget(self.processing_label, 9,1)
@@ -183,32 +194,21 @@ class DogeAutoSub(QWidget):
         if self.output_folder_path:
             self.output_file_path_display.setText(self.output_folder_path)
 
-    def skip_silent_segCheck(self):
-        # Get the current state of the checkbox
-        skip_silent_segments = self.skip_silent_segments_checkbox.isChecked()
        
     def process_audio_file(self):
         # Get selected file path and output folder path
         input_file_path = self.input_file_path
         output_folder_path = self.output_folder_path
-        # Get the value of the checkbox
-        """
-        skip = self.skip_silent_segments_checkbox.isChecked()
-        if skip :
-            skip_value = True
-        else:
-            skip_value = False
-        """    
       
         # Get selected source and target languages
         source_lang = self.source_language_dropdown.currentText()
         target_lang = self.target_language_dropdown.currentText()
-
+        engine = self.target_engine.currentText()
         # Get the path to the Python executable in the virtual environment
         python_path = os.path.join(sys.prefix, 'Scripts', 'python.exe')
 
         # Build the autosub command with the selected options
-        autosub_cmd = f"{python_path} modules/AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path}"
+        autosub_cmd = f"{python_path} modules/AutoSub.py {input_file_path} -S {source_lang} -D {target_lang} -o {output_folder_path} -E {engine}"
         print(autosub_cmd)
         # Run the autosub command
         subprocess.run(autosub_cmd, shell=True)

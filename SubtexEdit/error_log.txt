@@ -1,0 +1,14 @@
+﻿-----------------------------------------------------------------------------
+Date: 03/24/2023 16:39:06
+SE: 3.6.11.0 - Microsoft Windows NT 10.0.19044.0 - 64-bit
+Message: InitializeVideoPlayerAndContainer failed to load video player
+
+System.Runtime.InteropServices.COMException
+Message: Class not registered
+
+Class not registered
+
+StackTrace:    at QuartzTypeLib.IMediaControl.RenderFile(String strFilename)
+   at Nikse.SubtitleEdit.Logic.VideoPlayers.QuartsPlayer.Initialize(Control ownerControl, String videoFileName, EventHandler onVideoLoaded, EventHandler onVideoEnded)
+   at Nikse.SubtitleEdit.Logic.UiUtil.DoInitializeVideoPlayer(String fileName, VideoInfo videoInfo, VideoPlayerContainer videoPlayerContainer, EventHandler onVideoLoaded, EventHandler onVideoEnded)
+   at Nikse.SubtitleEdit.Logic.UiUtil.InitializeVideoPlayerAndContainer(String fileName, VideoInfo videoInfo, VideoPlayerContainer videoPlayerContainer, EventHandler onVideoLoaded, EventHandler onVideoEnded)
