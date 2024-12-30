@@ -1,5 +1,16 @@
 # DogeAutoSub
 
+## Installation
+
+You need to install Python first. Currently, the script uses Python 3.7.9, but you can use a newer version. Just make sure to change the Python path.
+
+Update this line in the `.bat` file:
+```
+set "PYTHON=C:\python3.9.7\python.exe"
+```
+
+## Usage
+
 Just run the `DogeAutoSub.bat` file.
 
 The first launch may take some time to load as it sets up the environment and downloads necessary dependencies.
