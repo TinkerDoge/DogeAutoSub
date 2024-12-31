@@ -1,5 +1,3 @@
-GOOGLE_SPEECH_API_KEY = "AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw"
-GOOGLE_SPEECH_API_URL = "http://www.google.com/speech-api/v2/recognize?client=chromium&lang={lang}&key={key}"
 
 LANGUAGE_CODES = {
     'en-US': 'English (US)',
@@ -15,18 +13,28 @@ LANGUAGE_CODES = {
     'vi-VN': 'Vietnamese',
 }
 
+MODEL_INFO = {
+    "tiny": {"vram": "1 GB", "speed": "10x"},
+    "base": {"vram": "1 GB", "speed": "7x"},
+    "small": {"vram": "2 GB", "speed": "4x"},
+    "medium": {"vram": "5 GB", "speed": "2x"},
+    "large": {"vram": "10 GB", "speed": "1x"},
+    "turbo": {"vram": "6 GB", "speed": "8x"}
+}
+
 LANGUAGETRANS = {
-    'en-US': 'en',
-    'en-GB': 'en',
-    'es-ES': 'es',
-    'fr-FR': 'fr',
-    'de-DE': 'de',
+    'English': 'en',
+    'Thai': 'th',
+    'Spanish': 'es',
+    'French': 'fr',
+    'German': 'de',
     'it-IT': 'it',
-    'cmn-Hans-CN': 'zh',  # Simplified Chinese
-    'zh-CN': 'zh',        # Simplified Chinese
-    'ja-JP': 'ja',        # Japanese
-    'ko-KR': 'ko',        # Korean
-    'vi-VN': 'vi',        # Vietnamese
+    'Chinese': 'zh',  # Simplified Chinese
+    'Japanese': 'ja',        # Japanese
+    'Korean': 'ko',        # Korean
+    'Vietnamese': 'vi',    # Vietnamese
+    'Russian': 'ru',
+
 }
 
 

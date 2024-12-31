@@ -6,12 +6,14 @@ import whisper
 from datetime import timedelta
 from constants import LANGUAGETRANS  # Import the language translation mapping
 from deep_translator import GoogleTranslator  # Import the deep-translator library
+from PySide6.QtCore import QObject
 
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
 ffmpeg_path = os.path.join(script_dir, "ffmpeg", "bin", "ffmpeg.exe")
 
-def extract_audio(filename, temp_dir, ffmpeg_path, channels=1, rate=44100, volume="8"):
+
+def extract_audio(filename, temp_dir, ffmpeg_path, channels=1, rate=44100, volume="3"):
     """Extracts audio from the source file and saves it as a WAV file."""
     print(f"Extracting audio from filename: {filename}")
     try:
@@ -29,17 +31,20 @@ def extract_audio(filename, temp_dir, ffmpeg_path, channels=1, rate=44100, volum
     except Exception as e:
         print(f"Error extracting audio: {e}")
         sys.exit(1)
-
-class WhisperRecognizer:
+        
+class WhisperRecognizer(QObject):
     """Wrapper class for Whisper transcription."""
+
     def __init__(self, language=None, model_size="base"):
+        super().__init__()
+        model_path = os.path.join("models")
         if language is None:
             print("Initializing WhisperRecognizer with auto-detection for language")
         else:
             print(f"Initializing WhisperRecognizer with language: {language}, model_size: {model_size}")
         self.language = language
         try:
-            self.model = whisper.load_model(model_size)
+            self.model = whisper.load_model(model_size, download_root=model_path)
             print("Model loaded successfully")
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -67,7 +72,8 @@ class WhisperRecognizer:
             print(f"Audio file found: {audio_path}")
             result = self.model.transcribe(audio_path, language=self.language, task="transcribe", ffmpeg_path=ffmpeg_path)
             print("Transcription successful")
-            return result["segments"]  # Returning segments for SRT formatting
+            segments = result["segments"]
+            return segments  # Returning segments for SRT formatting
         except Exception as e:
             print(f"Error during transcription: {e}")
             return []
@@ -78,7 +84,8 @@ class WhisperRecognizer:
             print(f"Translating audio: {audio_path} to {target_language}")
             result = self.model.transcribe(audio_path, language=target_language, task="translate", ffmpeg_path=ffmpeg_path)
             print("Translation successful")
-            return result["segments"]  # Returning segments for SRT formatting
+            segments = result["segments"]
+            return segments  # Returning segments for SRT formatting
         except Exception as e:
             print(f"Error during translation: {e}")
             return []
@@ -191,7 +198,7 @@ def main():
         # Clean up the temporary directory and files
         try:
             print("Cleaning up temporary files")
-            # os.remove(audio_filename)  # Removing the extracted audio file
+            os.remove(audio_filename)  # Removing the extracted audio file
         except Exception as e:
             print(f"Error cleaning up temporary files: {e}")
 

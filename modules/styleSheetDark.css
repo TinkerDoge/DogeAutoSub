@@ -1,0 +1,94 @@
+QPushButton {
+    background-color: #e98717;
+    color: #002333;
+    border: none;
+    text-align: center;
+    border-radius: 10px;
+    font-size: 16px;
+    padding: 2px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #D94F04;
+    color: #BFBFBF;
+}
+
+QPushButton:pressed {
+    background-color: #ffc400;
+    color: #FFFFFF;
+}
+
+QComboBox {
+    border: 1px solid #F29325;
+    border-radius: 10px;
+    padding: 5px;
+    font-size: 14px;
+    background-color: #747E7E;
+    color: #d3d3d3;
+}
+
+QComboBox:hover {
+    border: 3px solid #D94F04;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #F29325;
+    border-left-style: solid;
+    background-color: #e77736; /* Changed color */
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+QComboBox::down-arrow {
+    image: url(icons/drop-down-menu.png);
+    width: 16px;
+    height: 16px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #be9e89; /* Changed color */
+    color: #303030;
+    border: 1px solid #f26625;
+    selection-background-color: #f5e3ce;
+    selection-color: #000000;
+}
+
+QLabel {
+    color: #9b9b9b;
+    font-size: 14px;
+    border: none;
+}
+
+QDialog {
+    background-color: #252525;
+    color: #cecece;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+QFrame {
+    background-color: #2c2c2c;
+    color: #b8b8b8;
+    border-radius: 10px;
+    padding: 2px;
+}
+
+QProgressBar {
+    border: 2px solid #F29325;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 10px;
+    color: #002333;
+}
+
+QProgressBar::chunk {
+    background-color: #F29325;
+    width: 10px;
+    margin: 1px;
+    border-radius: 2px;
+}
