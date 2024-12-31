@@ -6,3 +6,5 @@ venv/
 DogeAutoSub.zip
 DogeAutoSub.bat
 .vscode/settings.json
+build/
+dist/

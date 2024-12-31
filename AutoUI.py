@@ -32,20 +32,24 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.setupUi(self)
         self.adjustSize()
         # Load and apply the default stylesheet (Dark theme)
-        with open("modules/styleSheetDark.css", "r") as file:
-            self.setStyleSheet(file.read())
+        stylesheet_path = os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css")
+        if os.path.exists(stylesheet_path):
+            with open(stylesheet_path, "r") as file:
+                self.setStyleSheet(file.read())
+        else:
+            print(f"Error: Stylesheet not found at {stylesheet_path}")
         self.current_theme = "Dark"
         
         # Add a loading label and movie
-        self.loading_movie = QMovie("icons/loading.gif")
+        self.loading_movie = QMovie(os.path.join(os.path.dirname(__file__), "icons", "loading.gif"))
         
-        self.standbyMovie = QMovie("icons/start.gif")
+        self.standbyMovie = QMovie(os.path.join(os.path.dirname(__file__), "icons", "start.gif"))
         self.statusimage.setMovie(self.standbyMovie)
         self.standbyMovie.start()
         self.statusLb.setText("Standby")
                 
         self.progressBar.setValue(0)
-        self.done_pixmap = QPixmap("icons/done.jpg").scaled(130, 150)
+        self.done_pixmap = QPixmap(os.path.join(os.path.dirname(__file__), "icons", "done.jpg")).scaled(130, 150)
         
         self.input_file_button.clicked.connect(self.select_input_file)
         self.output_folder_button.clicked.connect(self.select_output_folder)
@@ -59,17 +63,18 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.subtitle_thread = None
 
     def load_stylesheet(self, filename):
-        with open(filename, "r") as file:
-            self.setStyleSheet(file.read())
+        if os.path.exists(filename):
+            with open(filename, "r") as file:
+                self.setStyleSheet(file.read())
+        else:
+            print(f"Error: Stylesheet not found at {filename}")
 
     def changeThemes(self):
         if self.current_theme == "Dark":
-            with open("modules/styleSheetLight.css", "r") as file:
-                self.setStyleSheet(file.read())
+            self.load_stylesheet(os.path.join(os.path.dirname(__file__), "modules", "styleSheetLight.css"))
             self.current_theme = "Light"
         else:
-            with open("modules/styleSheetDark.css", "r") as file:
-                self.setStyleSheet(file.read())
+            self.load_stylesheet(os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css"))
             self.current_theme = "Dark"
 
     def open_output_folder(self):
@@ -110,7 +115,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         python_path = os.path.join(sys.prefix, 'Scripts', 'python.exe')
 
         # Build the autosub command with the selected options
-        autosub_cmd = f'"{python_path}" "modules/AutoSub.py" "{input_file_path}" -S "{source_lang}" -D "{target_lang}" -o "{output_folder_path}" -M {modelSize} -E "{engine}"'
+        autosub_cmd = f'"{python_path}" "{os.path.join(os.path.dirname(__file__), "modules", "AutoSub.py")}" "{input_file_path}" -S "{source_lang}" -D "{target_lang}" -o "{output_folder_path}" -M {modelSize} -E "{engine}"'
         print(autosub_cmd)
         
         # Create and start the subtitle thread
