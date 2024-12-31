@@ -1,5 +1,8 @@
 modules/__pycache__
+models/
 __pycache__
 modules/temp/extracted_audio.wav
 venv/
 DogeAutoSub.zip
+DogeAutoSub.bat
+.vscode/settings.json
