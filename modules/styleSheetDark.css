@@ -44,11 +44,7 @@ QComboBox::drop-down {
     border-bottom-right-radius: 10px;
 }
 
-QComboBox::down-arrow {
-    image: url(icons/drop-down-menu.png);
-    width: 16px;
-    height: 16px;
-}
+
 
 QComboBox QAbstractItemView {
     background-color: #be9e89; /* Changed color */

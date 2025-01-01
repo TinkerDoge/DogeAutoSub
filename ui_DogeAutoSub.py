@@ -32,7 +32,6 @@ class Ui_Dialog(object):
         Dialog.setMinimumSize(QSize(450, 600))
         Dialog.setMaximumSize(QSize(450, 600))
         icon = QIcon()
-        icon.addFile(u"icons/favicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         Dialog.setWindowIcon(icon)
         Dialog.setStyleSheet(u"")
         self.verticalLayout_2 = QVBoxLayout(Dialog)
@@ -70,7 +69,6 @@ class Ui_Dialog(object):
         self.openBtn.setMinimumSize(QSize(32, 0))
         self.openBtn.setMaximumSize(QSize(32, 16777215))
         icon1 = QIcon()
-        icon1.addFile(u"icons/folder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.openBtn.setIcon(icon1)
 
         self.horizontalLayout.addWidget(self.openBtn)
@@ -82,7 +80,6 @@ class Ui_Dialog(object):
         self.themeBtn.setMinimumSize(QSize(32, 0))
         self.themeBtn.setMaximumSize(QSize(32, 16777215))
         icon2 = QIcon()
-        icon2.addFile(u"icons/paint.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.themeBtn.setIcon(icon2)
 
         self.horizontalLayout.addWidget(self.themeBtn)

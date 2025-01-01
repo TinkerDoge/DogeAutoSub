@@ -1,27 +1,28 @@
 import sys
 from PySide6.QtWidgets import QApplication, QFileDialog
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtGui import QMovie, QPixmap, QDesktopServices
+from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
 from PySide6.QtCore import QThread, QUrl
-import subprocess
 import os
 import ui_DogeAutoSub
 from modules.constants import MODEL_INFO
+from modules.AutoSub import main as autosub_main
 
 class SubtitleThread(QThread):
     task_complete = QtCore.Signal()
     task_start = QtCore.Signal()
 
-    def __init__(self, parent=None, autosub_cmd=None):
+    def __init__(self, parent=None, autosub_args=None):
         super().__init__(parent)
-        self.autosub_cmd = autosub_cmd
+        self.autosub_args = autosub_args
 
     def run(self):
         # Display the loading GIF while the task is in progress
         self.task_start.emit()
 
         # Run the autosub command
-        subprocess.run(self.autosub_cmd, shell=True)
+        sys.argv = self.autosub_args
+        autosub_main()
 
         # Emit the task_complete signal to indicate that the task is complete
         self.task_complete.emit()
@@ -31,6 +32,29 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         super().__init__()
         self.setupUi(self)
         self.adjustSize()
+        
+        # Set the window icon
+        icon_path = os.path.join(os.path.dirname(__file__), "icons", "favicon.png")
+        self.setWindowIcon(QIcon(icon_path))
+        
+        # Set other icons
+        self.openBtn.setIcon(QIcon(os.path.join(os.path.dirname(__file__), "icons", "folder.png")))
+        self.themeBtn.setIcon(QIcon(os.path.join(os.path.dirname(__file__), "icons", "paint.png")))
+        
+        # Set the down arrow icon for QComboBox
+        self.model_size_dropdown.setStyleSheet(
+            "QComboBox::down-arrow { image: url(icons/drop-down-menu.png); width: 16px; height: 16px; }"
+        )
+        self.source_language_dropdown.setStyleSheet(
+            "QComboBox::down-arrow { image: url(icons/drop-down-menu.png); width: 16px; height: 16px; }"
+        )
+        self.target_language_dropdown.setStyleSheet(
+            "QComboBox::down-arrow { image: url(icons/drop-down-menu.png); width: 16px; height: 16px; }"
+        )
+        self.target_engine.setStyleSheet(
+            "QComboBox::down-arrow { image: url(icons/drop-down-menu.png); width: 16px; height: 16px; }"
+        )
+        
         # Load and apply the default stylesheet (Dark theme)
         stylesheet_path = os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css")
         if os.path.exists(stylesheet_path):
@@ -111,15 +135,21 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         target_lang = self.target_language_dropdown.currentText()
         modelSize = self.model_size_dropdown.currentText()
         engine = self.target_engine.currentText()
-        # Get the path to the Python executable in the virtual environment
-        python_path = os.path.join(sys.prefix, 'Scripts', 'python.exe')
 
-        # Build the autosub command with the selected options
-        autosub_cmd = f'"{python_path}" "{os.path.join(os.path.dirname(__file__), "modules", "AutoSub.py")}" "{input_file_path}" -S "{source_lang}" -D "{target_lang}" -o "{output_folder_path}" -M {modelSize} -E "{engine}"'
-        print(autosub_cmd)
+        # Build the autosub arguments with the selected options
+        autosub_args = [
+            "AutoSub.py",
+            input_file_path,
+            "-S", source_lang,
+            "-D", target_lang,
+            "-o", output_folder_path,
+            "-M", modelSize,
+            "-E", engine
+        ]
+        print("Running AutoSub with arguments:", autosub_args)
         
         # Create and start the subtitle thread
-        self.subtitle_thread = SubtitleThread(parent=self, autosub_cmd=autosub_cmd)
+        self.subtitle_thread = SubtitleThread(parent=self, autosub_args=autosub_args)
         self.subtitle_thread.task_start.connect(self.start_loading_animation)
         self.subtitle_thread.task_complete.connect(self.stop_loading_animation)
         self.subtitle_thread.start()
