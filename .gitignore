@@ -8,3 +8,4 @@ DogeAutoSub.bat
 .vscode/settings.json
 build/
 dist/
+modules/downloadModel.py
