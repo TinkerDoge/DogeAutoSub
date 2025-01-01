@@ -4,7 +4,7 @@ import subprocess
 import sys
 import whisper
 from datetime import timedelta
-from constants import LANGUAGETRANS  # Import the language translation mapping
+from modules.constants import LANGUAGETRANS  # Import the language translation mapping
 from deep_translator import GoogleTranslator  # Import the deep-translator library
 from PySide6.QtCore import QObject
 
@@ -17,7 +17,7 @@ def extract_audio(filename, temp_dir, ffmpeg_path, channels=1, rate=44100, volum
     """Extracts audio from the source file and saves it as a WAV file."""
     print(f"Extracting audio from filename: {filename}")
     try:
-        temp_audio_path = os.path.join(temp_dir, "extracted_audio.wav")
+        temp_audio_path = os.path.join(os.path.dirname(__file__),temp_dir, "extracted_audio.wav")
         print(f"Temporary audio path: {temp_audio_path}")
         command = [
             ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y",
@@ -37,7 +37,8 @@ class WhisperRecognizer(QObject):
 
     def __init__(self, language=None, model_size="base"):
         super().__init__()
-        model_path = os.path.join("models")
+        model_path = os.path.join(os.path.dirname(__file__),"models")
+        print(f"Model path: {model_path}")
         if language is None:
             print("Initializing WhisperRecognizer with auto-detection for language")
         else:

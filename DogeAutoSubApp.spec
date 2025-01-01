@@ -2,28 +2,61 @@
 
 block_cipher = None
 
+hiddenimports = [
+    'altgraph',
+    'beautifulsoup4',
+    'certifi',
+    'charset-normalizer',
+    'colorama',
+    'deep-translator',
+    'filelock',
+    'fsspec',
+    'idna',
+    'Jinja2',
+    'llvmlite',
+    'MarkupSafe',
+    'more-itertools',
+    'mpmath',
+    'networkx',
+    'numba',
+    'numpy',
+    'openai-whisper',
+    'packaging',
+    'pefile',
+    'pyinstaller',
+    'pyinstaller-hooks-contrib',
+    'PySide6',
+    'PySide6_Addons',
+    'PySide6_Essentials',
+    'pywin32-ctypes',
+    'regex',
+    'requests',
+    'shiboken6',
+    'soupsieve',
+    'sympy',
+    'tiktoken',
+    'torch',
+    'tqdm',
+    'typing_extensions',
+    'urllib3',
+    'whisper',
+]
+
 a = Analysis(
     ['AutoUI.py'],
     pathex=['.'],
     binaries=[],
     datas=[
         ('icons/*', 'icons'),
-        ('modules/ffmpeg/bin/ffmpeg.exe', 'ffmpeg/bin'),
         ('modules/styleSheetDark.css', 'modules'),
         ('modules/styleSheetLight.css', 'modules'),
         ('modules/*', 'modules'),
         ('ui_DogeAutoSub.py', '.'),
-        ('modules/constants.py', 'modules'),
-        ('modules/AutoSub.py', 'modules'),
-        ('models/*', 'models'),
+        ('modules/models/*', 'modules/models'),
+        ('modules/ffmpeg/bin/*', 'modules/ffmpeg/bin'),
+        ('.venv/Lib/site-packages/whisper/assets*', 'whisper/assets'),
     ],
-    hiddenimports=[
-        'deep_translator',
-        'whisper',
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-    ],
+    hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
@@ -43,9 +76,10 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+    console=True,
     icon='icons/doge.ico',
 )
+
 coll = COLLECT(
     exe,
     a.binaries,
@@ -55,4 +89,11 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='DogeAutoSubApp',
+)
+
+app = BUNDLE(
+    coll,
+    name='DogeAutoSubApp',
+    icon='icons/doge.ico',
+    onefile=True
 )
