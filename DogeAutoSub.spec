@@ -71,7 +71,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='DogeAutoSubApp',
+    name='DogeAutoSub',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -93,7 +93,7 @@ coll = COLLECT(
 
 app = BUNDLE(
     coll,
-    name='DogeAutoSubApp',
+    name='DogeAutoSub',
     icon='icons/doge.ico',
     onefile=True
 )

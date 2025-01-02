@@ -97,7 +97,7 @@ class AutoSub(QObject):
     def __init__(self):
         super().__init__()
 
-    def extract_audio(self, filename, temp_dir, ffmpeg_path, channels=1, rate=44100, volume="3"):
+    def extract_audio(self, filename, temp_dir, ffmpeg_path, channels=1, rate=16000 , volume="3"): # Whispers default rate is 16000, increase volume to 3
         """Extracts audio from the source file and saves it as a WAV file."""
         print(f"Extracting audio from filename: {filename}")
         self.status_update.emit("Extracting audio")

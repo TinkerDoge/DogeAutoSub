@@ -26,7 +26,7 @@ TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audi
 
 def load_audio(file: str, ffmpeg_path: str, sr: int = SAMPLE_RATE):
     """
-    Load an audio file and resample to the target sample rate.
+    Load an audio file and resample to the target sample rate if necessary.
 
     Parameters
     ----------
@@ -45,20 +45,33 @@ def load_audio(file: str, ffmpeg_path: str, sr: int = SAMPLE_RATE):
         The audio waveform
     """
     print(f"Loading audio file: {file}")
-    cmd = [
-        ffmpeg_path,
-        "-i", file,
-        "-f", "wav",
-        "-ar", str(sr),
-        "-ac", "1",
-        "-loglevel", "error",
-        "-hide_banner",
-        "pipe:1"
-    ]
+    if sr == SAMPLE_RATE:
+        # If the sample rate is already 16000 Hz, load the audio directly
+        cmd = [
+            ffmpeg_path,
+            "-i", file,
+            "-f", "wav",
+            "-ac", "1",
+            "-loglevel", "error",
+            "-hide_banner",
+            "pipe:1"
+        ]
+    else:
+        # Resample the audio to the target sample rate
+        cmd = [
+            ffmpeg_path,
+            "-i", file,
+            "-f", "wav",
+            "-ar", str(sr),
+            "-ac", "1",
+            "-loglevel", "error",
+            "-hide_banner",
+            "pipe:1"
+        ]
     print(f"Running command: {' '.join(cmd)}")
     try:
         out = subprocess.run(cmd, capture_output=True, check=True).stdout
-        print("ffmpeg command executed successfully")
+        print("Audio loaded successfully")
     except subprocess.CalledProcessError as e:
         print(f"Error executing ffmpeg command: {e}")
         raise
