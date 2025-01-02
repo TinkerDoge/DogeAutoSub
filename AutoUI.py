@@ -6,11 +6,14 @@ from PySide6.QtCore import QThread, QUrl
 import os
 import ui_DogeAutoSub
 from modules.constants import MODEL_INFO
-from modules.AutoSub import main as autosub_main
+from modules.AutoSub import AutoSub
+import argparse
 
 class SubtitleThread(QThread):
     task_complete = QtCore.Signal()
     task_start = QtCore.Signal()
+    progress_update = QtCore.Signal(int)
+    status_update = QtCore.Signal(str)
 
     def __init__(self, parent=None, autosub_args=None):
         super().__init__(parent)
@@ -20,9 +23,24 @@ class SubtitleThread(QThread):
         # Display the loading GIF while the task is in progress
         self.task_start.emit()
 
+        # Parse the arguments
+        parser = argparse.ArgumentParser()
+        parser.add_argument("source_path", help="Path to the video or audio file to subtitle", nargs="?")
+        parser.add_argument("-o", "--output-folder", help="Folder to save the output SRT file", default=os.getcwd())
+        parser.add_argument("-S", "--src-language", help="Language spoken in the source file", default=None)
+        parser.add_argument("-M", "--model-size", help="Whisper model size (tiny, base, small, medium, large)", default="base")
+        parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
+        parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
+        parser.add_argument('-E', '--translateEngine', help="Type of Translator Engine", default="whisper")
+        args = parser.parse_args(self.autosub_args)
+
+        # Create an instance of AutoSub and connect the progress and status signals
+        autosub = AutoSub()
+        autosub.progress_update.connect(self.progress_update.emit)
+        autosub.status_update.connect(self.status_update.emit)
+
         # Run the autosub command
-        sys.argv = self.autosub_args
-        autosub_main()
+        autosub.run(args)
 
         # Emit the task_complete signal to indicate that the task is complete
         self.task_complete.emit()
@@ -87,11 +105,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.subtitle_thread = None
 
     def load_stylesheet(self, filename):
-        if os.path.exists(filename):
-            with open(filename, "r") as file:
-                self.setStyleSheet(file.read())
-        else:
-            print(f"Error: Stylesheet not found at {filename}")
+        with open(filename, "r") as file:
+            self.setStyleSheet(file.read())
 
     def changeThemes(self):
         if self.current_theme == "Dark":
@@ -138,7 +153,6 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
 
         # Build the autosub arguments with the selected options
         autosub_args = [
-            "AutoSub.py",
             input_file_path,
             "-S", source_lang,
             "-D", target_lang,
@@ -152,7 +166,15 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.subtitle_thread = SubtitleThread(parent=self, autosub_args=autosub_args)
         self.subtitle_thread.task_start.connect(self.start_loading_animation)
         self.subtitle_thread.task_complete.connect(self.stop_loading_animation)
+        self.subtitle_thread.progress_update.connect(self.update_progress_bar)
+        self.subtitle_thread.status_update.connect(self.update_status_label)
         self.subtitle_thread.start()
+
+    def update_progress_bar(self, value):
+        self.progressBar.setValue(value)
+        
+    def update_status_label(self, status):
+        self.statusLb.setText(status)
         
     def changeModelsinfo(self, modelSize):
         # Update VRamUsage and rSpeed based on the selected model size

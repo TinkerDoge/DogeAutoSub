@@ -72,7 +72,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='DogeAutoSubApp',
-    debug=True,
+    debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
