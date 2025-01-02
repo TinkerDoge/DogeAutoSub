@@ -43,7 +43,7 @@ hiddenimports = [
 ]
 
 a = Analysis(
-    ['AutoUI.py'],
+    ['AutoUI.py', 'modules/AutoSub.py'],
     pathex=['.'],
     binaries=[],
     datas=[
@@ -54,7 +54,7 @@ a = Analysis(
         ('ui_DogeAutoSub.py', '.'),
         ('modules/models/*', 'modules/models'),
         ('modules/ffmpeg/bin/*', 'modules/ffmpeg/bin'),
-        ('.venv/Lib/site-packages/whisper/assets*', 'whisper/assets'),
+        ('venv/Lib/site-packages/whisper/assets*', 'whisper/assets'),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -72,7 +72,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='DogeAutoSubApp',
-    debug=False,
+    debug=True,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
