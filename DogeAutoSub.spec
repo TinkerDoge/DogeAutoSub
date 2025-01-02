@@ -88,7 +88,7 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='DogeAutoSubApp',
+    name='DogeAutoSub',
 )
 
 app = BUNDLE(
