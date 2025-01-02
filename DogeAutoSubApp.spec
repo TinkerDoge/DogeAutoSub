@@ -54,7 +54,7 @@ a = Analysis(
         ('ui_DogeAutoSub.py', '.'),
         ('modules/models/*', 'modules/models'),
         ('modules/ffmpeg/bin/*', 'modules/ffmpeg/bin'),
-        ('venv/Lib/site-packages/whisper/assets*', 'whisper/assets'),
+        ('.venv/Lib/site-packages/whisper/assets*', 'whisper/assets'),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],

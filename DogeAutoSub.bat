@@ -1,7 +1,7 @@
 @echo off
 
 set "SCRIPT_DIR=%~dp0"
-set "VENV_DIR=%SCRIPT_DIR%venv"
+set "VENV_DIR=%SCRIPT_DIR%.venv"
 set "PYTHON=D:\Software\python310\python.exe"
 set "REQUIREMENTS=%SCRIPT_DIR%requirements.txt"
 set "WHISPER_DIR=%VENV_DIR%\Lib\site-packages\whisper"

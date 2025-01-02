@@ -10,6 +10,23 @@ from deep_translator import GoogleTranslator  # Import the deep-translator libra
 from PySide6.QtCore import QObject, Signal
 import time  # Import time to measure elapsed time
 
+# Set CUDA environment variables to the modules/CUDA directory
+cuda_path = os.path.join(os.path.dirname(__file__), 'CUDA')
+print("CUDA path:", cuda_path)
+os.environ['CUDA_PATH'] = cuda_path
+os.environ['PATH'] = os.path.join(cuda_path, 'bin') + os.pathsep + os.environ['PATH']
+os.environ['CUDA_HOME'] = cuda_path
+os.environ['CUDA_ROOT'] = cuda_path
+os.environ['LD_LIBRARY_PATH'] = os.path.join(cuda_path, 'lib') + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+
+# Print environment variables for debugging
+print("Environment Variables:")
+print("CUDA_PATH:", os.environ.get('CUDA_PATH'))
+print("PATH:", os.environ.get('PATH'))
+print("CUDA_HOME:", os.environ.get('CUDA_HOME'))
+print("CUDA_ROOT:", os.environ.get('CUDA_ROOT'))
+print("LD_LIBRARY_PATH:", os.environ.get('LD_LIBRARY_PATH'))
+
 
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
@@ -128,7 +145,7 @@ class AutoSub(QObject):
 
         # Step 1: Extract audio
         try:
-            audio_filename = self.extract_audio(args.source_path, temp_dir, ffmpeg_path)
+            audio_filename = self.extract_audio(args.source_path, temp_dir, ffmpeg_path, args.volume)
             print(f"Extracted audio filename: {audio_filename}")
             self.progress_update.emit(20)  # Emit progress update
         except Exception as e:
@@ -241,6 +258,7 @@ def main():
     parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
     parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
     parser.add_argument('-E', '--translateEngine', help="Type of Translator Engine", default="whisper")
+    parser.add_argument('--volume', help="Volume boost for audio extraction", type=int, default=3)
     args = parser.parse_args()
 
     autosub = AutoSub()

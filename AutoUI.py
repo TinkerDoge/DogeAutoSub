@@ -36,6 +36,7 @@ class SubtitleThread(QThread):
         parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
         parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
         parser.add_argument('-E', '--translateEngine', help="Type of Translator Engine", default="whisper")
+        parser.add_argument('--volume', help="Volume boost for audio extraction", type=int, default=3)
         args = parser.parse_args(self.autosub_args)
 
         # Create an instance of AutoSub and connect the progress and status signals
@@ -83,7 +84,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.target_engine.setStyleSheet(
             "QComboBox::down-arrow { image: url(icons/drop-down-menu.png); width: 16px; height: 16px; }"
         )
-        
+
         # Load and apply the default stylesheet (Dark theme)
         stylesheet_path = os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css")
         if os.path.exists(stylesheet_path):
@@ -112,6 +113,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.themeBtn.clicked.connect(self.changeThemes)
         
         self.openBtn.clicked.connect(self.open_output_folder)
+        self.boostSlider.setValue(3)
         
         self.subtitle_thread = None
 
@@ -162,6 +164,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         modelSize = self.model_size_dropdown.currentText()
         engine = self.target_engine.currentText()
 
+        # Get the current value of the boostSlider
+        volume = self.boostSlider.value()
+
         # Build the autosub arguments with the selected options
         autosub_args = [
             input_file_path,
@@ -169,7 +174,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
             "-D", target_lang,
             "-o", output_folder_path,
             "-M", modelSize,
-            "-E", engine
+            "-E", engine,
+            "--volume", str(volume)
         ]
         print("Running AutoSub with arguments:", autosub_args)
         

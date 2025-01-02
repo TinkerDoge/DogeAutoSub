@@ -92,3 +92,37 @@ QProgressBar::chunk {
     margin: 1px;
     border-radius: 2px;
 }
+
+QSlider::groove:horizontal {
+    border: 1px solid #555;
+    height: 8px;
+    background: #444;
+    margin: 2px 0;
+    border-radius: 4px;
+}
+
+QSlider::handle:horizontal {
+    background: #F29325;
+    border: 1px solid #555;
+    width: 18px;
+    height: 18px;
+    margin: -5px 0;
+    border-radius: 9px;
+}
+
+QSlider::groove:vertical {
+    border: 1px solid #555;
+    width: 8px;
+    background: #444;
+    margin: 0 2px;
+    border-radius: 4px;
+}
+
+QSlider::handle:vertical {
+    background: #F29325;
+    border: 1px solid #555;
+    width: 18px;
+    height: 18px;
+    margin: 0 -5px;
+    border-radius: 9px;
+}
