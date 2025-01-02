@@ -8,6 +8,7 @@ import ui_DogeAutoSub
 from modules.constants import MODEL_INFO
 from modules.AutoSub import AutoSub
 import argparse
+import time  # Import time to measure elapsed time
 
 class SubtitleThread(QThread):
     task_complete = QtCore.Signal()
@@ -22,6 +23,9 @@ class SubtitleThread(QThread):
     def run(self):
         # Display the loading GIF while the task is in progress
         self.task_start.emit()
+
+        # Start the timer
+        start_time = time.time()
 
         # Parse the arguments
         parser = argparse.ArgumentParser()
@@ -42,8 +46,15 @@ class SubtitleThread(QThread):
         # Run the autosub command
         autosub.run(args)
 
+        # Calculate the elapsed time
+        elapsed_time = time.time() - start_time
+        elapsed_time_str = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+
         # Emit the task_complete signal to indicate that the task is complete
         self.task_complete.emit()
+
+        # Update the status message with the total time taken
+        self.status_update.emit(f"Done in {elapsed_time_str}")
 
 class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
     def __init__(self):
