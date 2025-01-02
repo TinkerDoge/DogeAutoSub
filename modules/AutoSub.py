@@ -158,7 +158,7 @@ class AutoSub(QObject):
 
         self.status_update.emit("Transcribing audio")
         segments = recognizer.transcribe(audio_filename, ffmpeg_path, progress_callback=self.progress_update.emit)
-        print(f"Transcription segments: {segments}")
+        #print(f"Transcription segments: {segments}")
 
         self.status_update.emit("Saving transcription")
         # Save the original transcription to SRT file
