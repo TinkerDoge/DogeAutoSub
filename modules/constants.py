@@ -1,18 +1,4 @@
 
-LANGUAGE_CODES = {
-    'en-US': 'English (US)',
-    'en-GB': 'English (UK)',
-    'es-ES': 'Spanish (Spain)',
-    'fr-FR': 'French',
-    'de-DE': 'German',
-    'it-IT': 'Italian',
-    'cmn-Hans-CN': 'Chinese (Mandarin)',
-    'zh-CN': 'Chinese (Simplified)',
-    'ja-JP': 'Japanese',
-    'ko-KR': 'Korean',
-    'vi-VN': 'Vietnamese',
-}
-
 MODEL_INFO = {
     "tiny": {"vram": "1 GB", "speed": "10x"},
     "base": {"vram": "1 GB", "speed": "7x"},
@@ -22,34 +8,15 @@ MODEL_INFO = {
     "turbo": {"vram": "6 GB", "speed": "8x"}
 }
 
-TIMEEST = {
-    "tiny": 0.37,
-    "base": 0.44,
-    "small": 0.88,
-    "medium": 2.31,
-    "turbo": 2.13,
-    "large": 4.62
-}
 
-    # Base weights for the model (excluding translate)
-BASE_WEIGHTS = {
-        "tiny": 0.25,
-        "base": 0.35,
-        "small": 0.70,
-        "medium": 2.00,
-        "turbo": 1.80,
-        "large": 4.62
-    }
-    
-    # Additional weights for the translate task
-TRANSLATE_WEIGHTS = {
-        "tiny": 0.12,
-        "base": 0.09,
-        "small": 0.18,
-        "medium": 0.30,
-        "turbo": 0.25,
-        "large": 4.62
-    }
+TASK_WEIGHTS = {
+    "base": {'extract_audio': 0.029447, 'load_model': 0.340212, 'transcribe': 0.073078, 'translate': 0.204338},
+    "medium": {'extract_audio': 0.029447, 'load_model': 2.544401, 'transcribe': 0.210081, 'translate': 0.214918},
+    "small": {'extract_audio': 0.029447, 'load_model': 0.860841, 'transcribe': 0.120865, 'translate': 0.178356},
+    "tiny": {'extract_audio': 0.029447, 'load_model': 0.214486, 'transcribe': 0.059103, 'translate': 0.249711},
+    "turbo": {'extract_audio': 0.029447, 'load_model': 2.528063, 'transcribe': 0.063907, 'translate': 0.222897},
+    "large": {'extract_audio': 0.029447, 'load_model': 5.049726, 'transcribe': 0.264191, 'translate': 0.244318}
+}
 
 LANGUAGETRANS = {
     'English': 'en',

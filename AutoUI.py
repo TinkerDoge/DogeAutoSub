@@ -5,7 +5,7 @@ from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
 from PySide6.QtCore import QThread, QUrl, QObject
 import os
 import ui_DogeAutoSub
-from modules.constants import MODEL_INFO, LANGUAGETRANS, BASE_WEIGHTS, TRANSLATE_WEIGHTS
+from modules.constants import MODEL_INFO, LANGUAGETRANS, TASK_WEIGHTS
 import argparse
 import re
 import subprocess
@@ -125,27 +125,31 @@ class SubtitleThread(QThread):
         self.task_complete.emit()
         self.status_update.emit(f"Done in {elapsed_time_str}")
         self.progress_update.emit(100)  
-        
+    
     def update_estimated_time(self, duration, model_size, include_translate=True):
+        # Task-specific weights for each model
 
-        # Get the base multiplier
-        base_multiplier = BASE_WEIGHTS.get(model_size, 2)  # Default to 2 if model size is not found
-        
-        # Add the translate multiplier if included
-        if include_translate:
-            translate_multiplier = TRANSLATE_WEIGHTS.get(model_size, 0)  # Default to 0 if model size is not found
-            total_multiplier = base_multiplier + translate_multiplier
-        else:
-            total_multiplier = base_multiplier
+        # Default weights for unknown models
+        default_weights = {"extract_audio": 0.05, "load_model": 0.50, "transcribe": 0.10, "translate": 0.10}
 
-        # Calculate the estimated time
-        estimated_time = duration * total_multiplier
-        estimated_time_str = time.strftime("%H:%M:%S", time.gmtime(estimated_time))
+        # Get weights for the model or default weights
+        weights = TASK_WEIGHTS.get(model_size, default_weights)
+
+        # Calculate total time
+        extract_time = duration * weights["extract_audio"]
+        load_time = duration * weights["load_model"]
+        transcribe_time = duration * weights["transcribe"]
+        translate_time = duration * weights["translate"] if include_translate else 0
+
+        total_time = extract_time + load_time + transcribe_time + translate_time
+
+        # Convert to HH:MM:SS format
+        total_time_str = time.strftime("%H:%M:%S", time.gmtime(total_time))
 
         # Print and emit the estimated time
-        print(f"Estimated time to complete: {estimated_time_str}")
-        self.duration_update.emit(f"Estimated time to complete: {estimated_time_str}")
-
+        print(f"Estimated total time: {total_time_str}")
+        self.duration_update.emit(f"Estimated total time: {total_time_str}")
+        
     def run(self):
         args = self.args
         start_time = time.time()
