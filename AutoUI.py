@@ -15,7 +15,8 @@ class SubtitleThread(QThread):
     task_start = QtCore.Signal()
     progress_update = QtCore.Signal(int)
     status_update = QtCore.Signal(str)
-
+    duration_update = QtCore.Signal(float)  # Define a duration signal
+    
     def __init__(self, parent=None, autosub_args=None):
         super().__init__(parent)
         self.autosub_args = autosub_args
@@ -43,6 +44,7 @@ class SubtitleThread(QThread):
         autosub = AutoSub()
         autosub.progress_update.connect(self.progress_update.emit)
         autosub.status_update.connect(self.status_update.emit)
+        autosub.duration_update.connect(self.update_estimated_time.emit)  # Connect the duration signal
 
         # Run the autosub command
         autosub.run(args)
@@ -113,7 +115,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
         self.themeBtn.clicked.connect(self.changeThemes)
         
         self.openBtn.clicked.connect(self.open_output_folder)
-        self.boostSlider.setValue(3)
+        self.boostSlider.setValue(3)  # Set default value of boost slider to 3
         
         self.subtitle_thread = None
 
@@ -193,11 +195,16 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
     def update_status_label(self, status):
         self.statusLb.setText(status)
         
+    def update_estimated_time(self, duration):
+        estimated_time = duration * 2  # Rough estimate: 2x the audio duration
+        estimated_time_str = time.strftime("%H:%M:%S", time.gmtime(estimated_time))
+        self.statusLb.setText(f"Estimated time to complete: {estimated_time_str}")
+        
     def changeModelsinfo(self, modelSize):
         # Update VRamUsage and rSpeed based on the selected model size
-        if modelSize in MODEL_INFO:
-            self.VRamUsage.setText(MODEL_INFO[modelSize]["vram"])
-            self.rSpeed.setText(MODEL_INFO[modelSize]["speed"])
+        if (model_info := MODEL_INFO.get(modelSize)):
+            self.VRamUsage.setText(model_info["vram"])
+            self.rSpeed.setText(model_info["speed"])
         else:
             self.VRamUsage.setText("Unknown")
             self.rSpeed.setText("Unknown")

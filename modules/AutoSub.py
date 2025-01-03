@@ -110,29 +110,11 @@ class WhisperRecognizer(QObject):
 class AutoSub(QObject):
     progress_update = Signal(int)  # Define a progress signal
     status_update = Signal(str)  # Define a status signal
-
+    duration_update = Signal(float)  # Define a duration signal
+    
     def __init__(self):
         super().__init__()
 
-    def extract_audio(self, filename, temp_dir, ffmpeg_path, channels=1, rate=16000 , volume="3"): # Whispers default rate is 16000, increase volume to 3
-        """Extracts audio from the source file and saves it as a WAV file."""
-        print(f"Extracting audio from filename: {filename}")
-        self.status_update.emit("Extracting audio")
-        try:
-            temp_audio_path = os.path.join(os.path.dirname(__file__), temp_dir, "extracted_audio.wav")
-            print(f"Temporary audio path: {temp_audio_path}")
-            command = [
-                ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y",
-                "-i", filename, "-ac", str(channels), "-ar", str(rate),
-                "-filter:a", f"volume={volume}", "-vn", "-f", "wav", temp_audio_path
-            ]
-            print(f"Running command: {' '.join(command)}")
-            subprocess.run(command, check=True)
-            print("Audio extraction successful")
-            return temp_audio_path
-        except Exception as e:
-            print(f"Error extracting audio: {e}")
-            sys.exit(1)
 
     def run(self, args):
         if not args.source_path:
@@ -145,13 +127,13 @@ class AutoSub(QObject):
 
         # Step 1: Extract audio
         try:
-            audio_filename = self.extract_audio(args.source_path, temp_dir, ffmpeg_path, args.volume)
-            print(f"Extracted audio filename: {audio_filename}")
-            self.progress_update.emit(20)  # Emit progress update
+            audio_filename = extract_audio(args.source_path, temp_dir, volume=args.volume)
+            audio_duration = get_audio_duration(audio_filename)
+            self.duration_update.emit(audio_duration)  # Emit the audio duration
         except Exception as e:
-            print(f"Error extracting audio: {e}")
-            sys.exit(1)
-
+            self.status_update.emit(f"Error extracting audio: {e}")
+            return
+        
         # Ensure the audio file exists and is accessible
         if not os.path.exists(audio_filename):
             print(f"Error: Extracted audio file not found at {audio_filename}")
@@ -216,6 +198,40 @@ class AutoSub(QObject):
         self.progress_update.emit(100)  # Emit progress update
         self.status_update.emit("Done")
         return 0  
+
+def get_audio_duration(audio_path, ffmpeg_path="ffmpeg"):
+    """Get the total duration of an audio file using ffmpeg."""
+    try:
+        command = [
+            ffmpeg_path,
+            "-i", audio_path,
+            "-f", "null",
+            "-"
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, stderr=subprocess.STDOUT)
+        duration_match = re.search(r"Duration: (\d+:\d+:\d+\.\d+)", result.stdout)
+        if duration_match:
+            duration_str = duration_match.group(1)
+            h, m, s = map(float, duration_str.split(':'))
+            duration = h * 3600 + m * 60 + s
+            return duration
+        else:
+            print("Could not find duration in ffmpeg output.")
+            return None
+    except Exception as e:
+        print(f"Error getting audio duration: {e}")
+        return None
+
+def extract_audio(filename, temp_dir, channels=1, rate=44100, volume="3"):
+    """Extracts audio from the source file and saves it as a WAV file."""
+    temp_audio_path = os.path.join(temp_dir, "extracted_audio.wav")
+    command = [
+        "ffmpeg", "-hide_banner", "-loglevel", "warning", "-y",
+        "-i", filename, "-ac", str(channels), "-ar", str(rate),
+        "-filter:a", f"volume={volume}", "-vn", "-f", "wav", temp_audio_path
+    ]
+    subprocess.run(command, check=True)
+    return temp_audio_path
         
 def format_timestamp(seconds):
     """Formats time in seconds to SRT timestamp format."""
