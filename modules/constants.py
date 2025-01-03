@@ -22,6 +22,35 @@ MODEL_INFO = {
     "turbo": {"vram": "6 GB", "speed": "8x"}
 }
 
+TIMEEST = {
+    "tiny": 0.37,
+    "base": 0.44,
+    "small": 0.88,
+    "medium": 2.31,
+    "turbo": 2.13,
+    "large": 4.62
+}
+
+    # Base weights for the model (excluding translate)
+BASE_WEIGHTS = {
+        "tiny": 0.25,
+        "base": 0.35,
+        "small": 0.70,
+        "medium": 2.00,
+        "turbo": 1.80,
+        "large": 4.62
+    }
+    
+    # Additional weights for the translate task
+TRANSLATE_WEIGHTS = {
+        "tiny": 0.12,
+        "base": 0.09,
+        "small": 0.18,
+        "medium": 0.30,
+        "turbo": 0.25,
+        "large": 4.62
+    }
+
 LANGUAGETRANS = {
     'English': 'en',
     'Thai': 'th',

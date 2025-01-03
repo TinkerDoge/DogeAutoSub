@@ -328,31 +328,33 @@ class Ui_Dialog(object):
         self.statusFrame.setObjectName(u"statusFrame")
         self.statusFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.statusFrame.setFrameShadow(QFrame.Shadow.Raised)
-        self.gridLayout_3 = QGridLayout(self.statusFrame)
-        self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.brow = QGridLayout()
-        self.brow.setSpacing(8)
-        self.brow.setObjectName(u"brow")
-        self.statusimage = QLabel(self.statusFrame)
-        self.statusimage.setObjectName(u"statusimage")
-        self.statusimage.setMaximumSize(QSize(150, 150))
-
-        self.brow.addWidget(self.statusimage, 0, 0, 1, 1)
-
-        self.statusLb = QLabel(self.statusFrame)
-        self.statusLb.setObjectName(u"statusLb")
-        self.statusLb.setMaximumSize(QSize(150, 150))
-
-        self.brow.addWidget(self.statusLb, 0, 1, 1, 1)
-
-
-        self.gridLayout_3.addLayout(self.brow, 1, 0, 1, 1)
-
+        self.verticalLayout = QVBoxLayout(self.statusFrame)
+        self.verticalLayout.setObjectName(u"verticalLayout")
         self.progressBar = QProgressBar(self.statusFrame)
         self.progressBar.setObjectName(u"progressBar")
         self.progressBar.setValue(0)
 
-        self.gridLayout_3.addWidget(self.progressBar, 0, 0, 1, 1)
+        self.verticalLayout.addWidget(self.progressBar)
+
+        self.statusLb = QLabel(self.statusFrame)
+        self.statusLb.setObjectName(u"statusLb")
+        self.statusLb.setMinimumSize(QSize(300, 0))
+        self.statusLb.setMaximumSize(QSize(300, 30))
+
+        self.verticalLayout.addWidget(self.statusLb)
+
+        self.estlb = QLabel(self.statusFrame)
+        self.estlb.setObjectName(u"estlb")
+        self.estlb.setMinimumSize(QSize(300, 0))
+        self.estlb.setMaximumSize(QSize(300, 30))
+
+        self.verticalLayout.addWidget(self.estlb)
+
+        self.statusimage = QLabel(self.statusFrame)
+        self.statusimage.setObjectName(u"statusimage")
+        self.statusimage.setMaximumSize(QSize(150, 150))
+
+        self.verticalLayout.addWidget(self.statusimage)
 
 
         self.verticalLayout_2.addWidget(self.statusFrame)
@@ -460,10 +462,11 @@ class Ui_Dialog(object):
         self.start_button.setToolTip(QCoreApplication.translate("Dialog", u"Start the Doge", None))
 #endif // QT_CONFIG(tooltip)
         self.start_button.setText(QCoreApplication.translate("Dialog", u"START", None))
-        self.statusimage.setText("")
-        self.statusLb.setText("")
 #if QT_CONFIG(tooltip)
         self.progressBar.setToolTip(QCoreApplication.translate("Dialog", u"This is just for show, not really working at all ", None))
 #endif // QT_CONFIG(tooltip)
+        self.statusLb.setText(QCoreApplication.translate("Dialog", u"Standby", None))
+        self.estlb.setText(QCoreApplication.translate("Dialog", u"Estimate: ", None))
+        self.statusimage.setText("")
     # retranslateUi
 
