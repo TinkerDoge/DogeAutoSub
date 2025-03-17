@@ -8,36 +8,41 @@ MODEL_INFO = {
     "turbo": {"vram": "6 GB", "speed": "8x"}
 }
 
-
-TASK_WEIGHTS = {
-    "base": {'extract_audio': 0.029447, 'load_model': 0.340212, 'transcribe': 0.073078, 'translate': 0.204338},
-    "medium": {'extract_audio': 0.029447, 'load_model': 2.544401, 'transcribe': 0.210081, 'translate': 0.214918},
-    "small": {'extract_audio': 0.029447, 'load_model': 0.860841, 'transcribe': 0.120865, 'translate': 0.178356},
-    "tiny": {'extract_audio': 0.029447, 'load_model': 0.214486, 'transcribe': 0.059103, 'translate': 0.249711},
-    "turbo": {'extract_audio': 0.029447, 'load_model': 2.528063, 'transcribe': 0.063907, 'translate': 0.222897},
-    "large": {'extract_audio': 0.029447, 'load_model': 5.049726, 'transcribe': 0.264191, 'translate': 0.244318}
-}
-
+# Update LANGUAGETRANS dictionary to ensure consistent naming and coding
 LANGUAGETRANS = {
+    'Auto': 'auto',
     'English': 'en',
     'Thai': 'th',
     'Spanish': 'es',
     'French': 'fr',
     'German': 'de',
-    'it-IT': 'it',
-    'Chinese': 'zh',  # Simplified Chinese
-    'Japanese': 'ja',        # Japanese
-    'Korean': 'ko',        # Korean
-    'Vietnamese': 'vi',    # Vietnamese
+    'Italian': 'it',  # Changed from 'it-IT' to match standard code
+    'chinese (simplified)': 'zh-CN', 
+    'chinese (traditional)': 'zh-TW',
+    'Japanese': 'ja',
+    'Korean': 'ko',
+    'Vietnamese': 'vi',
     'Russian': 'ru',
-
+    # Additional languages for consistency with LANGUAGE_CODES_AI
+    'Portuguese': 'pt',
+    'Turkish': 'tr',
+    'Polish': 'pl',
+    'Dutch': 'nl',
+    'Arabic': 'ar',
+    'Swedish': 'sv',
+    'Indonesian': 'id',
+    'Hindi': 'hi',
+    'Finnish': 'fi',
+    'Hebrew': 'iw',  # Note: Google uses 'iw' for Hebrew
+    'Ukrainian': 'uk',
+    'Greek': 'el',
 }
 
 
 LANGUAGE_CODES_AI = [
     ("auto", "Auto"),
     ("en", "English"),
-    ("zh", "Chinese"),
+    ("zh", "chinese"),
     ("ja", "Japanese"),
     ("ko", "Korean"),
     ("de", "German"),

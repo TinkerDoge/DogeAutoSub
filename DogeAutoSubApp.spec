@@ -43,7 +43,7 @@ hiddenimports = [
 ]
 
 a = Analysis(
-    ['AutoUI.py', 'modules/AutoSub.py'],
+    ['AutoUI.py'],
     pathex=['.'],
     binaries=[],
     datas=[
