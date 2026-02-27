@@ -1,0 +1,28 @@
+{
+  "version": "2.0.4",
+  "filename": "DogeAutoSub_v2.0.4.zip",
+  "notes": "Fix Get Token button layout, optimize engine and processor modules",
+  "files": {
+    "AutoUI.py": "0dcabfd5527310e2f2aed3cb82e8831cbb8a27d4abc4e465c1b42355eebc2a25",
+    "ui_DogeAutoSub.py": "fedf9441094d5b18eceda121493a21e9ae6eee426f5b511994f88a09b2b37e16",
+    "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
+    "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
+    "icons/drop-down-menu.png": "e4316d74c055d5fb52c940acec5b7a95066a5cce8ea85dc5935c65a8a07a16f4",
+    "icons/favicon.png": "3513cbf1ccfbfb77a286768150b4f2379f86a06bd1e90fa61c1cbbf2fdd3d8ae",
+    "icons/folder.png": "618fe673d8ab22502d38040b1ef9e5ef9e4b979567da5482edb73c5e2cd527d6",
+    "icons/loading.gif": "3cd3ce48fa6218079096fe6ae017caf6ec9ad3c0cf44474ab25460fdde7c2be1",
+    "icons/Logo.png": "0af2b462622eccb619b7716fd938bd99dcdbe9af960bbc1e1ce63aa54bca531d",
+    "icons/paint.png": "397404be507d2747e7931b8c6eafffd86d8f2e72e49b4ca2667bb7c16e7ec7ab",
+    "icons/start.gif": "92d1dc30cec47a6ce09b98a1ac42c16066b196166fbbed500db3f0369e3cd7b4",
+    "modules/chunk_processor.py": "5035cb2a670ff750c6f9feca0431c18de7fe554011bdb7dc5af9bbd1792b04c9",
+    "modules/constants.py": "e1b373d0b793570abae92439ef564b339a17667575d338a52988bbd6e5ccc699",
+    "modules/faster_whisper_engine.py": "f72805e2ce488356f60fb51f971ae698b52dfd2f0e9a3d030ec54922fa06675d",
+    "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
+    "modules/meeting_notes.py": "772bd62d1ae69371943649ad0175b765c4c55a6a88a1e60b25604bc32fbd1691",
+    "modules/mlaas_client.py": "793ce7be5502e85289dca9c1f41af16f6500d3ddfa4594d76804df22c54df75d",
+    "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
+    "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
+    "modules/subtitle_args.py": "2d035cf9452ae9dafd5636e620b60ad6a864a391e5e747a9f99f56085280cbcf",
+    "modules/updater.py": "f9377db214dace968d25d3aa8691390699022fc4847133031c940dad7b63d9a6"
+  }
+}
