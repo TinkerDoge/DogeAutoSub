@@ -50,9 +50,17 @@ def _file_hash(filepath: str) -> str:
 
 
 def get_app_dir() -> str:
-    """Get the root directory of the app."""
+    """Get the root directory where Python files live.
+    
+    For PyInstaller --onedir builds, files are in <exe_dir>/_internal/
+    For dev mode, files are in the project root (parent of modules/).
+    """
     if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
+        exe_dir = os.path.dirname(sys.executable)
+        internal = os.path.join(exe_dir, "_internal")
+        if os.path.isdir(internal):
+            return internal
+        return exe_dir
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
