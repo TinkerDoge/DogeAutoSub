@@ -1,12 +1,14 @@
-
 MODEL_INFO = {
-    "tiny": {"vram": "1 GB", "speed": "10x"},
-    "base": {"vram": "1 GB", "speed": "7x"},
-    "small": {"vram": "2 GB", "speed": "4x"},
-    "medium": {"vram": "5 GB", "speed": "2x"},
-    "large": {"vram": "10 GB", "speed": "1x"},
-    "turbo": {"vram": "6 GB", "speed": "8x"}
+    "tiny": {"vram": "39 MB", "speed": "~150x"},      # faster-whisper benchmarks
+    "base": {"vram": "74 MB", "speed": "~80x"},
+    "small": {"vram": "244 MB", "speed": "~40x"},
+    "medium": {"vram": "769 MB", "speed": "~20x"},
+    "large": {"vram": "1550 MB", "speed": "~8x"},
+    "large-v3": {"vram": "1550 MB", "speed": "~8x"},
+    "turbo": {"vram": "809 MB", "speed": "~16x"},
+    "distil-large-v3": {"vram": "756 MB", "speed": "~25x"},  # Distil model
 }
+
 
 # Update LANGUAGETRANS dictionary to ensure consistent naming and coding
 LANGUAGETRANS = {
@@ -142,6 +144,6 @@ LANGUAGE_CODES_AI = [
     ("su", "Sundanese"),
 ]
 
-MODEL_TYPES = ["tiny", "base", "small", "medium", "large"]
+MODEL_TYPES = ["tiny", "base", "small", "medium", "large", "large-v3", "turbo", "distil-large-v3"]
 
 TASK_TYPES = ["transcribe", "translate"]

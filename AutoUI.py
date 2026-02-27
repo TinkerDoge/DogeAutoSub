@@ -1,821 +1,1079 @@
-import sys
-from PySide6.QtWidgets import QApplication, QFileDialog
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
-from PySide6.QtCore import QThread, QUrl, QObject
+"""
+DogeAutoSub — Automatic Subtitle Generation Application
+========================================================
+Clean, modern desktop app using PySide6 + faster-whisper.
+
+Pipeline:  Select Video → Extract Audio → Transcribe → Translate → Save SRT
+"""
+
 import os
-import ui_DogeAutoSub
-from modules.constants import MODEL_INFO, LANGUAGETRANS, LANGUAGE_CODES_AI
-import argparse
 import re
 import subprocess
-import whisper
-import torch  # Import torch to check for GPU availability
-from datetime import timedelta
-from deep_translator import GoogleTranslator  # Import the deep-translator library
-import time  # Import time to measure elapsed time
+import sys
+import time
+import wave
+import contextlib
 
-# Set CUDA environment variables to the modules/CUDA directory
-cuda_path = os.path.join(os.path.dirname(__file__),'modules','CUDA')
-print("CUDA path:", cuda_path)
-os.environ['CUDA_PATH'] = cuda_path
-os.environ['PATH'] = os.path.join(cuda_path, 'bin') + os.pathsep + os.environ['PATH']
-os.environ['CUDA_HOME'] = cuda_path
-os.environ['CUDA_ROOT'] = cuda_path
-os.environ['LD_LIBRARY_PATH'] = os.path.join(cuda_path, 'lib') + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+from PySide6.QtWidgets import (
+    QApplication, QFileDialog, QMainWindow, QMessageBox,
+)
+from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
+from PySide6.QtCore import QThread, QUrl, Qt, Signal
 
-script_path = os.path.abspath(__file__)
-script_dir = os.path.dirname(script_path)
-ffmpeg_path = os.path.join(script_dir,"modules", "ffmpeg", "bin", "ffmpeg.exe")
-temp_dir = os.path.join(script_dir,"modules", "temp")
+import ui_DogeAutoSub
+from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES
+from modules.subtitle_args import SubtitleArgs
+from modules.mlaas_client import MLAASConfig, translate_segments_mlaas, summarize_text_mlaas
+from modules.updater import APP_VERSION, check_for_update, download_and_apply_update, restart_app
 
-# WhisperRecognizer class for Whisper transcription
-class WhisperRecognizer(QObject):
+# ── CUDA Setup ──────────────────────────────────────────────────
+cuda_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modules', 'CUDA')
+if os.path.isdir(cuda_path):
+    os.environ['CUDA_PATH'] = cuda_path
+    os.environ['PATH'] = os.path.join(cuda_path, 'bin') + os.pathsep + os.environ['PATH']
+    os.environ['CUDA_HOME'] = cuda_path
 
-    def __init__(self, language=None, model_size="base"):
-        super().__init__()
-        model_path = os.path.join(os.path.dirname(__file__), "modules", "models")
-        print(f"Model path: {model_path}")
-        if language is None:
-            print("Initializing WhisperRecognizer with auto-detection for language")
-        else:
-            print(f"Initializing WhisperRecognizer with language: {language}, model_size: {model_size}")
-        self.language = language
-        try:
-            self.model = whisper.load_model(model_size, download_root=model_path)
-            print("Model loaded successfully")
-            # Move the model to GPU if available and model size is not large
-            if torch.cuda.is_available() and model_size != "large":
-                self.model = self.model.to('cuda')
-                print("Model moved to GPU")
-            else:
-                self.model = self.model
-                print("GPU not available or model size is large, using CPU")
-        except Exception as e:
-            print(f"Error loading model: {e}")
-            sys.exit(1)
+# ── Paths ───────────────────────────────────────────────────────
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FFMPEG_PATH = os.path.join(SCRIPT_DIR, "modules", "ffmpeg", "bin", "ffmpeg.exe")
+TEMP_DIR = os.path.join(SCRIPT_DIR, "modules", "temp")
 
-    def detect_language(self, audio_path, ffmpeg_path):
-        """Detects the language spoken in the audio using Whisper."""
-        try:
-            result = self.model.transcribe(audio_path, task="detect-language", ffmpeg_path=ffmpeg_path)
-            detected_language = result["language"]
-            print(f"Detected language: {detected_language}")
-            return detected_language
-        except Exception as e:
-            print(f"Error during language detection: {e}")
-            return None
+# ── Try importing optional translation engines ──────────────────
+try:
+    from deep_translator import GoogleTranslator
+    GOOGLE_TRANSLATE_AVAILABLE = True
+except ImportError:
+    GOOGLE_TRANSLATE_AVAILABLE = False
+    print("Google Translate not available (install deep-translator)")
 
-    def transcribe(self, audio_path, ffmpeg_path, progress_callback=None):
-        """Transcribes audio using Whisper."""
-        try:
-            if not os.path.exists(audio_path):
-                print(f"Error: Audio file not found at {audio_path}")
-                return [], None
-            
-            start_time = time.time()
-            
-            # Handle "auto" language parameter
-            language_param = None if self.language == "auto" else self.language
-            
-            # Perform the transcription
-            result = self.model.transcribe(audio_path, language=language_param, task="transcribe", ffmpeg_path=ffmpeg_path)
-            segments = result["segments"]
-            detected_language = result.get("language", "unknown")
-            print(f"Transcription successful. Detected language: {detected_language}")
+try:
+    from modules.marian_translator import MarianTranslator, MARIAN_AVAILABLE
+except ImportError:
+    MARIAN_AVAILABLE = False
 
-            # Emit final progress update
-            if progress_callback:
-                progress_callback(75)
-            
-            return segments, detected_language  # Return both segments and detected language
-        except Exception as e:
-            print(f"Error during transcription: {e}")
-            return [], None
-        
-    def translate(self, audio_path, target_language, ffmpeg_path, progress_callback=None):
-        """Translates audio using Whisper."""
-        try:
-            print(f"Translating audio: {audio_path} to {target_language}")
-            result = self.model.transcribe(audio_path, language=target_language, task="translate", ffmpeg_path=ffmpeg_path)
-            print("Translation successful")
-            segments = result["segments"]
-            if progress_callback:
-                progress_callback(80)  # Emit progress update after translation
-            return segments  # Returning segments for SRT formatting
-        except Exception as e:
-            print(f"Error during translation: {e}")
-            return []
- 
-# AutoSub class for autosub functionality
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 
-class SubtitleThread(QThread):
-    task_complete = QtCore.Signal()
-    task_start = QtCore.Signal()
-    progress_update = QtCore.Signal(int)
-    status_update = QtCore.Signal(str)
-    duration_update = QtCore.Signal(str)  # Define a duration signal
-    
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-        # Dynamic stage weights based on model size and audio duration
-        self.stage_weights = {
-            "extract_audio": 0.05,  # Extract audio is usually quick
-            "load_model": 0.0,      # Will be calculated dynamically based on model size
-            "transcribe": 0.0,      # Will be calculated dynamically based on audio duration and model
-            "translate": 0.0        # Will be calculated dynamically based on segments and target language
-        }
-        self.audio_duration = 0
-        self.start_time = 0
-        self.segments_count = 0
-        self.model_loaded = False
-        
-    def calculate_dynamic_weights(self):
-        """Calculate stage weights dynamically based on model size and audio duration"""
-        model_size = self.args.model_size
-        translate = self.args.src_language != self.args.dst_language
-        
-        # Model loading times vary significantly by size
-        model_load_factors = {
-            "tiny": 0.05,
-            "base": 0.1,
-            "small": 0.15,
-            "medium": 0.2,
-            "large": 0.25,
-            "turbo": 0.15
-        }
-        
-        # Transcription time factors
-        transcribe_factors = {
-            "tiny": 0.55,
-            "base": 0.6,
-            "small": 0.65,
-            "medium": 0.7,
-            "large": 0.8,
-            "turbo": 0.6
-        }
-        
-        # Get factors for selected model
-        load_factor = model_load_factors.get(model_size, 0.1)
-        transcribe_factor = transcribe_factors.get(model_size, 0.6)
-        
-        # Set stage weights
-        if translate:
-            # Adjust weights if translation is needed
-            self.stage_weights["load_model"] = load_factor
-            self.stage_weights["transcribe"] = transcribe_factor
-            self.stage_weights["translate"] = 0.9 - load_factor - transcribe_factor - self.stage_weights["extract_audio"]
-        else:
-            # Adjust weights if no translation is needed
-            self.stage_weights["load_model"] = load_factor
-            self.stage_weights["transcribe"] = 0.95 - load_factor - self.stage_weights["extract_audio"]
-            self.stage_weights["translate"] = 0.0
-        
-        print(f"Dynamic weights: {self.stage_weights}")
-        
-    def update_progress(self, stage, progress_within_stage=1.0):
-        """Update progress based on current stage and progress within that stage"""
-        # Recalculate weights if audio duration is known but weights aren't set yet
-        if self.audio_duration > 0 and not self.model_loaded and stage == "load_model":
-            self.calculate_dynamic_weights()
-            self.model_loaded = True
-        
-        # Get list of stages based on whether translation is needed
-        if self.args.src_language != self.args.dst_language:
-            stages = ["extract_audio", "load_model", "transcribe", "translate"]
-        else:
-            stages = ["extract_audio", "load_model", "transcribe"]
-        
-        # Handle special case for transcription progress
-        if stage == "transcribe":
-            # Adjust progress for longer audio files (transcription is not linear)
-            if self.audio_duration > 300:  # For files longer than 5 minutes
-                # Apply logarithmic scaling to better reflect perceived progress
-                # This helps avoid the feeling of "stuck at 60%" for long files
-                progress_within_stage = 0.4 + (0.6 * (progress_within_stage ** 0.7))
-        
-        # Calculate progress up to the previous stages
-        previous_progress = sum(self.stage_weights[s] for s in stages[:stages.index(stage)])
-        
-        # Add progress from current stage
-        current_progress = self.stage_weights[stage] * progress_within_stage
-        
-        # Calculate total progress percentage
-        total_progress = int((previous_progress + current_progress) * 100)
-        
-        # Update UI
-        self.progress_update.emit(total_progress)
-        
-        # Update remaining time estimate - now accounting for non-linear progress
-        elapsed = time.time() - self.start_time
-        if total_progress > 0:
-            # For better estimation on longer tasks
-            if total_progress < 50:
-                # Early stages tend to be faster than later ones
-                estimated_total = elapsed / (total_progress / 100) * 1.2
-            else:
-                # Later stages can be more accurately predicted
-                estimated_total = elapsed / (total_progress / 100)
-                
-            remaining = max(1, estimated_total - elapsed)  # Ensure at least 1 second
-            remaining_str = time.strftime("%H:%M:%S", time.gmtime(remaining))
-            self.duration_update.emit(f"Estimated time remaining: {remaining_str}")
-            
-    def calculate_initial_estimate(self):
-        """Calculate initial time estimate based on audio duration and model size"""
-        model_size = self.args.model_size
-        translate = self.args.src_language != self.args.dst_language
-        
-        # Base processing rates (seconds of audio processed per second) for different models
-        # These are rough estimates and should be adjusted based on actual performance
-        base_rates = {
-            "tiny": 5.0,
-            "base": 3.0,
-            "small": 1.5,
-            "medium": 0.8,
-            "large": 0.4,
-            "turbo": 1.5
-        }
-        
-        # Get processing rate for selected model or default to base
-        rate = base_rates.get(model_size, 3.0)
-        
-        # Calculate base estimate
-        estimated_seconds = self.audio_duration / rate
-        
-        # Add overhead for extraction and loading
-        estimated_seconds += 15  # Base overhead
-        
-        # Add translation overhead if needed
-        if translate:
-            estimated_seconds *= 1.3  # 30% more time for translation
-            
-        # Convert to readable format
-        estimated_str = time.strftime("%H:%M:%S", time.gmtime(estimated_seconds))
-        self.duration_update.emit(f"Initial estimate: {estimated_str}")
-        
-    def run(self):
-        args = self.args
-        self.start_time = time.time()
-        
-        # Determine if translation is needed
-        translate = args.src_language != args.dst_language
-        
-        if not args.source_path:
-            print("Error: You need to specify a source path.")
-            sys.exit(1)
 
-        self.task_start.emit()  # Emit task start signal
-        self.status_update.emit("Starting process")
-        os.makedirs(temp_dir, exist_ok=True)
+# ═══════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════
 
-        # Step 1: Extract audio
-        self.status_update.emit("Extracting audio")
-        extract_start_time = time.time()
-        try:
-            audio_filename = extract_audio(ffmpeg_path, args.source_path, temp_dir, volume=args.volume)
-            self.audio_duration = get_audio_duration(audio_filename, ffmpeg_path)
-            print(f"Audio duration: {self.audio_duration:.2f} seconds")
-            
-            # Calculate initial time estimate
-            self.calculate_initial_estimate()
-            
-            # Update progress for audio extraction
-            self.update_progress("extract_audio")
-            
-        except Exception as e:
-            self.status_update.emit(f"Error extracting audio: {e}")
-            print(f"Error extracting audio: {e}")
-            return
-        
-        extract_end_time = time.time()
-        print(f"Time to Extract Audio: {extract_end_time - extract_start_time:.2f} seconds")
-        
-        # Ensure the audio file exists and is accessible
-        if not os.path.exists(audio_filename):
-            print(f"Error: Extracted audio file not found at {audio_filename}")
-            sys.exit(1)
-            
-        # Step 2: Initialize model and detect language if needed
-        self.status_update.emit("Loading model")
-        load_model_start_time = time.time()
-        
-        whisper_src_lang = LANGUAGETRANS.get(args.src_language, None)  # Default to None for Whisper auto-detection
-        google_src_lang = LANGUAGETRANS.get(args.src_language, "auto")  # Default to "auto" for Google Translate auto-detection
-        
-        if whisper_src_lang is None:
-            recognizer = WhisperRecognizer(model_size=args.model_size)
-            detected_language = recognizer.detect_language(audio_filename, ffmpeg_path)
-            whisper_src_lang = detected_language if detected_language else "unknown"
-            google_src_lang = detected_language if detected_language else "auto"
-            self.status_update.emit(f"Detected language: {whisper_src_lang}")
-            
-        dst_lang = LANGUAGETRANS.get(args.dst_language, "en")
-        recognizer = WhisperRecognizer(language=whisper_src_lang, model_size=args.model_size)
-        
-        # Update progress for model loading
-        self.update_progress("load_model")
-        
-        load_model_end_time = time.time()
-        print(f"Time to Load Model: {load_model_end_time - load_model_start_time:.2f} seconds")
-        
-        # Step 3: Transcribe audio
-        self.status_update.emit("Transcribing audio")
-        transcribe_start_time = time.time()
-                
-        def transcription_progress(value):
-            # Map the internal progress to our stage progress
-            stage_progress = value / 75  # Whisper's callback uses values up to 75
-            self.update_progress("transcribe", stage_progress)
+def _lang_code(name: str, default: str = "auto") -> str:
+    """Convert a display name like 'English' to a language code like 'en'."""
+    if not name:
+        return default
+    for code, disp in LANGUAGE_CODES_AI:
+        if disp.lower() == name.lower():
+            return code
+    return name.lower()
 
-        segments, detected_language = recognizer.transcribe(audio_filename, ffmpeg_path, progress_callback=transcription_progress)
 
-        # Save the original transcription to SRT file
-        self.status_update.emit("Saving transcription")
-        base_name = os.path.splitext(os.path.basename(args.source_path))[0]
-
-        # Use the detected language if we used auto detection
-        if whisper_src_lang == "auto" and detected_language:
-            file_language_code = detected_language
-            # Also update the source language for translation
-            google_src_lang = detected_language  # Use detected language instead of "auto"
-        else:
-            file_language_code = whisper_src_lang
-
-        original_srt_path = os.path.join(
-            args.output_folder, f"{base_name}.{file_language_code}.srt"
-        )
-        save_as_srt(segments, original_srt_path)
-        
-        # Update progress for transcription completed
-        self.update_progress("transcribe")
-        
-        transcribe_end_time = time.time()
-        print(f"Time to Transcribe: {transcribe_end_time - transcribe_start_time:.2f} seconds")
-
-        # Step 4: Translate segments if necessary
-        translate_start_time = time.time()
-        if translate:
-
-            self.status_update.emit("Translating segments")
-            
-            # Track translation progress
-            translation_steps = len(segments) if segments else 1
-            
-            if args.translateEngine == "whisper":
-                print(f"Translating segments using Whisper from {args.src_language} to {args.dst_language}")
-                debug_translation_setup(args.src_language, args.dst_language)
-                # Custom progress callback for translation
-                def translation_progress(value):
-                    # Map the internal progress to our stage progress
-                    stage_progress = value / 80  # Whisper's callback uses values up to 80
-                    self.update_progress("translate", stage_progress)
-                
-                segments = recognizer.translate(audio_filename, dst_lang, ffmpeg_path, progress_callback=translation_progress)
-                
-            elif args.translateEngine == "google":
-                print(f"Translating segments using Google Translate from {file_language_code if args.src_language == 'Auto' else args.src_language} to {args.dst_language}")
-                
-                # Implement progress tracking for Google translation
-                translated_segments = []
-                
-                # Use detected language for Google translator if original was Auto
-                source_lang = google_src_lang if args.src_language == 'Auto' else LANGUAGETRANS.get(args.src_language, "auto")
-                debug_translation_setup(source_lang, dst_lang)
-                    # Special handling for Chinese variants
-                if google_src_lang == 'zh':
-                    # You can try different variants if one fails
-                    source_options = 'zh-CN'
-                translator = GoogleTranslator(source=source_options, target=dst_lang)
-                
-                for i, segment in enumerate(segments):
-                    translated_text = translator.translate(segment["text"])
-                    translated_segments.append({
-                        "start": segment["start"],
-                        "end": segment["end"],
-                        "text": translated_text
-                    })
-                    
-                    # Update progress every few segments
-                    if i % max(1, len(segments) // 10) == 0:
-                        progress = (i + 1) / len(segments)
-                        self.update_progress("translate", progress)
-                        
-                segments = translated_segments
-                
-            print("Translation completed.")
-
-            self.status_update.emit("Saving translation")
-            # Save the translated transcription to SRT file
-            translated_srt_path = os.path.join(
-                args.output_folder, f"{base_name}.{dst_lang}.srt"
-            )
-            save_as_srt(segments, translated_srt_path)
-            
-            # Update progress for translation completed
-            self.update_progress("translate")
-        
-        translate_end_time = time.time()
-        if translate:
-            print(f"Time to Translate: {translate_end_time - translate_start_time:.2f} seconds")
-        
-        self.status_update.emit("Cleaning up temporary files")
-        # Clean up the temporary directory and files
-        try:
-            print("Cleaning up temporary files")
-            os.remove(audio_filename)  # Removing the extracted audio file
-        except Exception as e:
-            print(f"Error cleaning up temporary files: {e}")
-
-        # Calculate final statistics
-        total_time = time.time() - self.start_time
-        elapsed_time_str = time.strftime("%H:%M:%S", time.gmtime(total_time))
-        
-        self.task_complete.emit()
-        self.status_update.emit(f"Done in {elapsed_time_str}")
-        self.progress_update.emit(100)
-        
-        print(f"Audio duration: {self.audio_duration:.2f} seconds")
-        print(f"Total time: {total_time:.2f} seconds")
-               
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            print("GPU cache cleared.")
-            
-        return 0
-
-# Add this method to debug translation issues
-def debug_translation_setup(source_lang, target_lang):
-    """Debug translation setup to identify issues with specific language pairs"""
-    print(f"\nDEBUG TRANSLATION: {source_lang} -> {target_lang}")
-    
-    # Check if languages are in our mapping
-    print(f"Source in LANGUAGETRANS: {source_lang in LANGUAGE_CODES_AI}")
-    print(f"Target in LANGUAGETRANS: {target_lang in LANGUAGE_CODES_AI}")
-    
-    # Get the language codes
-    src_code = LANGUAGETRANS.get(source_lang, source_lang)
-    dst_code = LANGUAGETRANS.get(target_lang, target_lang)
-    print(f"Source code: {src_code}")
-    print(f"Target code: {dst_code}")
-
-def get_audio_duration(audio_path, ffmpeg_path=ffmpeg_path):
-    """Get the total duration of an audio file using ffmpeg."""
-    try:
-        command = [
-            ffmpeg_path,
-            "-i", audio_path,
-            "-f", "null",
-            "-"
-        ]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        duration_match = re.search(r"Duration: (\d+:\d+:\d+\.\d+)", result.stderr)
-        if duration_match:
-            duration_str = duration_match.group(1)
-            h, m, s = map(float, duration_str.split(':'))
-            duration = h * 3600 + m * 60 + s
-            return duration
-        else:
-            print("Could not find duration in ffmpeg output.")
-            return None
-    except Exception as e:
-        print(f"Error getting audio duration: {e}")
-        return None
-
-def extract_audio(ffmpeg_path, filename, temp_dir, channels=1, rate=16000, volume="3"):
-    """Extracts audio from the source file and saves it as a WAV file."""
-    temp_audio_path = os.path.join(temp_dir, "extracted_audio.wav")
+def extract_audio(source_path: str, volume: int = 3) -> str:
+    """Extract audio from a media file and save as WAV in temp dir."""
+    os.makedirs(TEMP_DIR, exist_ok=True)
+    output_path = os.path.join(TEMP_DIR, "extracted_audio.wav")
     command = [
-        ffmpeg_path, "-hide_banner", "-loglevel", "warning", "-y",
-        "-i", filename, "-ac", str(channels), "-ar", str(rate),
-        "-filter:a", f"volume={volume}", "-vn", "-f", "wav", temp_audio_path
+        FFMPEG_PATH, "-hide_banner", "-loglevel", "warning", "-y",
+        "-i", source_path,
+        "-ac", "1", "-ar", "16000",
+        "-filter:a", f"volume={volume}",
+        "-vn", "-f", "wav", output_path,
     ]
-    print(f"Running ffmpeg command: {' '.join(command)}")  # Debugging information
+    print(f"Extracting audio: {' '.join(command)}")
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
-        print(f"ffmpeg error: {result.stderr}")  # Print ffmpeg error message
-        raise Exception("ffmpeg failed to extract audio")
-    return temp_audio_path
+        raise RuntimeError(f"ffmpeg failed: {result.stderr}")
+    return output_path
 
-def format_timestamp(seconds):
-    """Formats time in seconds to SRT timestamp format."""
-    td = timedelta(seconds=seconds)
-    hours, remainder = divmod(td.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    milliseconds = td.microseconds // 1000
-    return f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
 
-def translate_segments_google(segments, src_lang, dst_lang):
-    """
-    Translates transcription segments using Google Translate with better handling
-    for Chinese and other languages.
-    """
-    translated_segments = []
-    
-    # Debug info
-    print(f"Translating from '{src_lang}' to '{dst_lang}'")
-    
-    # Map 'auto' to None for source language as needed by GoogleTranslator
-    source = None if src_lang == 'auto' else src_lang
-    
-    # Special handling for Chinese variants
-    if src_lang == 'zh':
-        # You can try different variants if one fails
-        source_options = ['zh-CN', 'zh-TW']
-    else:
-        source_options = [source]
-    
-    # Initialize translator with first option
+def get_audio_duration(file_path: str) -> float:
+    """Get audio/video duration in seconds."""
     try:
-        translator = GoogleTranslator(source=source_options[0], target=dst_lang)
-        test_success = False
-        
-        # Test the translator with a simple phrase
-        if segments and segments[0]:
-            try:
-                test_text = segments[0]["text"][:50]  # Use first 50 chars for testing
-                translator.translate(test_text)
-                test_success = True
-            except Exception as e:
-                print(f"Initial translation test failed: {e}")
-        
-        # If test failed and we have alternatives, try them
-        if not test_success and len(source_options) > 1:
-            for alt_source in source_options[1:]:
-                try:
-                    print(f"Trying alternative source language: {alt_source}")
-                    translator = GoogleTranslator(source=alt_source, target=dst_lang)
-                    if segments and segments[0]:
-                        translator.translate(segments[0]["text"][:50])
-                        break
-                except Exception as e:
-                    print(f"Alternative source {alt_source} failed: {e}")
-    
+        if not os.path.exists(file_path):
+            return 0.0
+        # Fast path for WAV
+        if file_path.lower().endswith('.wav'):
+            with contextlib.closing(wave.open(file_path, 'rb')) as wf:
+                frames = wf.getnframes()
+                rate = wf.getframerate()
+                return frames / float(rate) if rate > 0 else 0.0
+        # Try ffprobe
+        ffprobe = os.path.join(os.path.dirname(FFMPEG_PATH), 'ffprobe.exe')
+        if os.path.exists(ffprobe):
+            cmd = [ffprobe, '-v', 'error', '-show_entries', 'format=duration',
+                   '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
+            res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return float(res.stdout.strip())
+        # Fallback: parse ffmpeg -i
+        cmd = [FFMPEG_PATH, '-i', file_path, '-hide_banner']
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        info = res.stderr or res.stdout
+        m = re.search(r"Duration: (\d\d):(\d\d):(\d\d)\.(\d+)", info)
+        if m:
+            h, mn, s, ms = m.groups()
+            return int(h) * 3600 + int(mn) * 60 + int(s) + float(f"0.{ms}")
     except Exception as e:
-        print(f"Error initializing translator: {e}")
-        # Fallback to simple pass-through if translation fails
-        return segments
-    
-    # Process segments in batches to improve efficiency
-    batch_size = 10
-    total_segments = len(segments)
-    
-    for i in range(0, total_segments, batch_size):
-        batch = segments[i:i+batch_size]
-        print(f"Translating batch {i//batch_size + 1}/{(total_segments + batch_size - 1)//batch_size}")
-        
-        # Translate each segment in the batch
-        for segment in batch:
-            try:
-                original_text = segment["text"].strip()
-                if not original_text:
-                    translated_text = ""
-                else:
-                    translated_text = translator.translate(original_text)
-                
-                translated_segments.append({
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": translated_text
-                })
-            except Exception as e:
-                print(f"Error translating segment: {e}")
-                # If translation fails, keep the original text
-                translated_segments.append({
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": segment["text"]
-                })
-    
-    return translated_segments
+        print(f"Error getting duration: {e}")
+    return 0.0
 
-def save_as_srt(segments, output_path):
-    """Saves transcription segments as an SRT file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure output directory exists
-    with open(output_path, "w", encoding="utf-8") as srt_file:
-        for i, segment in enumerate(segments, start=1):
-            start_time = format_timestamp(segment["start"])
-            end_time = format_timestamp(segment["end"])
-            text = segment["text"].strip()
-            srt_file.write(f"{i}\n{start_time} --> {end_time}\n{text}\n\n")
+
+def format_timestamp(seconds: float) -> str:
+    """Format seconds to SRT timestamp: HH:MM:SS,mmm"""
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
+
+
+def save_as_srt(segments: list, output_path: str):
+    """Save transcription segments as an SRT file."""
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        for i, seg in enumerate(segments, start=1):
+            start = format_timestamp(seg["start"])
+            end = format_timestamp(seg["end"])
+            text = seg.get("text", "").strip()
+            f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
     print(f"Subtitles saved to {output_path}")
 
-class DogeAutoSub(ui_DogeAutoSub.Ui_Dialog, QtWidgets.QDialog):
+
+def translate_segments_google(segments: list, src_lang: str, dst_lang: str) -> list:
+    """Translate segments using Google Translate."""
+    if not GOOGLE_TRANSLATE_AVAILABLE:
+        print("Google Translate not available, returning original segments")
+        return segments
+
+    source = None if src_lang == 'auto' else src_lang
+    # Handle Chinese variants
+    source_options = ['zh-CN', 'zh-TW'] if src_lang == 'zh' else [source]
+
+    try:
+        translator = GoogleTranslator(source=source_options[0], target=dst_lang)
+        # Test with first option
+        if segments:
+            try:
+                translator.translate(segments[0].get("text", "test")[:50])
+            except Exception:
+                for alt in source_options[1:]:
+                    try:
+                        translator = GoogleTranslator(source=alt, target=dst_lang)
+                        translator.translate(segments[0].get("text", "test")[:50])
+                        break
+                    except Exception:
+                        continue
+    except Exception as e:
+        print(f"Error initializing translator: {e}")
+        return segments
+
+    translated = []
+    for seg in segments:
+        try:
+            text = seg.get("text", "").strip()
+            translated_text = translator.translate(text) if text else ""
+            translated.append({
+                "start": seg["start"],
+                "end": seg["end"],
+                "text": translated_text,
+            })
+        except Exception:
+            translated.append(seg)
+    return translated
+
+
+# ═══════════════════════════════════════════════════════════════
+# THROUGHPUT TRACKER (replaces heuristic-based ETA)
+# ═══════════════════════════════════════════════════════════════
+
+class ThroughputTracker:
+    """Track real-time processing speed for accurate ETA calculation."""
+    
+    def __init__(self):
+        self.start_time = time.time()
+        self._stage_start = time.time()
+        self._audio_processed = 0.0
+        self._total_audio = 0.0
+    
+    @property
+    def elapsed(self) -> float:
+        return time.time() - self.start_time
+    
+    def set_total_audio(self, duration: float):
+        self._total_audio = duration
+    
+    def update(self, audio_seconds_done: float):
+        """Update with amount of audio processed so far."""
+        self._audio_processed = audio_seconds_done
+    
+    def eta_string(self) -> str:
+        """Get formatted ETA string."""
+        elapsed = time.time() - self._stage_start
+        if self._audio_processed <= 0 or elapsed < 2:
+            return "Calculating..."
+        throughput = self._audio_processed / elapsed  # audio seconds per wall second
+        remaining_audio = max(0, self._total_audio - self._audio_processed)
+        if throughput > 0:
+            eta_seconds = remaining_audio / throughput
+            return time.strftime("%H:%M:%S", time.gmtime(eta_seconds))
+        return "Calculating..."
+    
+    def elapsed_string(self) -> str:
+        return time.strftime("%H:%M:%S", time.gmtime(self.elapsed))
+    
+    def start_stage(self):
+        self._stage_start = time.time()
+        self._audio_processed = 0.0
+
+
+# ═══════════════════════════════════════════════════════════════
+# SUBTITLE THREAD — Clean 5-step pipeline
+# ═══════════════════════════════════════════════════════════════
+
+class SubtitleThread(QThread):
+    """Worker thread for subtitle generation pipeline."""
+    
+    task_complete = Signal()
+    task_start = Signal()
+    progress_update = Signal(int)
+    status_update = Signal(str)
+    duration_update = Signal(str)
+    
+    def __init__(self, args: SubtitleArgs):
+        super().__init__()
+        self.args = args
+        self.tracker = ThroughputTracker()
+    
+    def run(self):
+        try:
+            self.task_start.emit()
+            self.tracker = ThroughputTracker()
+            
+            src_code = _lang_code(self.args.src_language or "Auto", "auto")
+            dst_code = _lang_code(self.args.dst_language or "English", "en")
+            os.makedirs(TEMP_DIR, exist_ok=True)
+            
+            # ── Step 1: Load faster-whisper + Process ───────────
+            self.status_update.emit("Loading faster-whisper model…")
+            self.progress_update.emit(5)
+            
+            from modules.faster_whisper_engine import FasterWhisperRecognizer
+            from modules.chunk_processor import ChunkProcessor
+            
+            processor = ChunkProcessor(
+                chunk_duration=30.0,
+                volume_boost=str(self.args.volume),
+                ffmpeg_path=FFMPEG_PATH,
+            )
+            
+            recognizer = FasterWhisperRecognizer(
+                model_size=self.args.model_size,
+                language=None if src_code == "auto" else src_code,
+            )
+            
+            self.progress_update.emit(15)
+            
+            # ── Step 2: Extract audio + Transcribe ──────────────
+            self.status_update.emit("Processing audio…")
+            self.tracker.start_stage()
+            
+            transcribe_start = time.time()
+            
+            def chunk_progress_cb(completed, total, stage, eta_seconds):
+                if total > 0:
+                    # Map to 15-85% range
+                    progress = 15 + int((completed / total) * 70)
+                    self.progress_update.emit(min(progress, 85))
+                self.status_update.emit(stage)
+                if processor.total_duration > 0:
+                    audio_done = (completed / max(total, 1)) * processor.total_duration
+                    self.tracker.update(audio_done)
+                eta = self.tracker.eta_string()
+                elapsed = self.tracker.elapsed_string()
+                self.duration_update.emit(f"Elapsed: {elapsed} | ETA: {eta}")
+            
+            segs, detected = processor.process_parallel(
+                self.args.source_path,
+                recognizer,
+                progress_callback=chunk_progress_cb,
+            )
+            
+            transcribe_time = time.time() - transcribe_start
+            video_duration = processor.total_duration
+            self.tracker.set_total_audio(video_duration)
+            
+            segments_count = len(segs or [])
+            base = os.path.splitext(os.path.basename(self.args.source_path))[0]
+            out_dir = self.args.output_folder or os.path.dirname(self.args.source_path)
+            os.makedirs(out_dir, exist_ok=True)
+            
+            # Resolve auto-detected language
+            actual_src = detected if (src_code == "auto" and detected) else src_code
+            
+            # ── Step 3: Save original transcription ─────────────
+            self.status_update.emit("Saving transcription…")
+            self.progress_update.emit(86)
+            orig_srt = os.path.join(out_dir, f"{base}.srt")
+            if segs:
+                save_as_srt(segs, orig_srt)
+            
+            # ── Step 4: Translate if needed ──────────────────────
+            translate_time = 0
+            if actual_src != dst_code:
+                self.status_update.emit(f"Translating {actual_src} → {dst_code}…")
+                translate_start = time.time()
+                
+                engine = (self.args.translate_engine or "google").lower()
+                translated_segments = None
+                
+                try:
+                    if engine == "mlaas" and self.args.mlaas_token:
+                        self.status_update.emit(f"Translating via MLAAS API ({actual_src} → {dst_code})…")
+                        mlaas_config = MLAASConfig(bearer_token=self.args.mlaas_token)
+                        translated_segments = translate_segments_mlaas(
+                            segs, dst_code, mlaas_config,
+                            progress_callback=lambda p: self.progress_update.emit(86 + int(p * 0.13)),
+                        )
+                    elif engine == "marian" and MARIAN_AVAILABLE:
+                        translator = MarianTranslator(actual_src, dst_code)
+                        if translator.load_model():
+                            texts = [s.get("text", "") for s in segs]
+                            preds = translator.translate_batch(
+                                texts,
+                                batch_size=8 if (TORCH_AVAILABLE and torch.cuda.is_available()) else 4,
+                                progress_cb=lambda f: self.progress_update.emit(86 + int((f or 0) * 13)),
+                            )
+                            translated_segments = [
+                                {"start": s["start"], "end": s["end"], "text": preds[i] if i < len(preds) else s.get("text", "")}
+                                for i, s in enumerate(segs)
+                            ]
+                    elif engine == "whisper" and hasattr(recognizer, 'translate'):
+                        audio_path = os.path.join(TEMP_DIR, "extracted_audio.wav")
+                        if not os.path.exists(audio_path):
+                            extract_audio(self.args.source_path, self.args.volume)
+                        translated_segments = recognizer.translate(audio_path, dst_code) or []
+                    else:
+                        # Default: Google Translate
+                        translated_segments = translate_segments_google(segs, actual_src, dst_code)
+                except Exception as e:
+                    print(f"Translation error ({engine}): {e}")
+                    translated_segments = None
+                
+                translate_time = time.time() - translate_start
+                
+                if translated_segments:
+                    tgt_srt = os.path.join(out_dir, f"{base}_{dst_code}.srt")
+                    save_as_srt(translated_segments, tgt_srt)
+            
+            # ── Step 5: Done ────────────────────────────────────
+            self.progress_update.emit(100)
+            
+            total_time = time.time() - self.tracker.start_time
+            print(f"\n{'='*50}")
+            print(f"TASK COMPLETED")
+            print(f"{'='*50}")
+            print(f"Video Length:     {time.strftime('%H:%M:%S', time.gmtime(video_duration))} ({video_duration:.1f}s)")
+            print(f"Transcribe Time:  {time.strftime('%H:%M:%S', time.gmtime(transcribe_time))} ({transcribe_time:.1f}s)")
+            if translate_time > 0:
+                print(f"Translate Time:   {time.strftime('%H:%M:%S', time.gmtime(translate_time))} ({translate_time:.1f}s)")
+            print(f"Total Time:       {time.strftime('%H:%M:%S', time.gmtime(total_time))} ({total_time:.1f}s)")
+            print(f"Segments:         {segments_count}")
+            print(f"{'='*50}\n")
+            
+            elapsed = self.tracker.elapsed_string()
+            self.duration_update.emit(f"Completed in {elapsed}")
+            self.status_update.emit("Completed ✓")
+            self.task_complete.emit()
+            
+        except Exception as e:
+            print(f"SubtitleThread error: {e}")
+            import traceback
+            traceback.print_exc()
+            self.status_update.emit(f"Error: {str(e)[:80]}")
+            self.task_complete.emit()
+
+
+# ═══════════════════════════════════════════════════════════════
+# MEETING NOTES THREAD
+# ═══════════════════════════════════════════════════════════════
+
+class MeetingNotesThread(QThread):
+    """Worker thread for meeting notes generation via MLAAS."""
+    
+    finished = Signal(str)   # result text
+    error = Signal(str)      # error message
+    status_update = Signal(str)
+    
+    def __init__(self, docx_path: str, mlaas_token: str):
+        super().__init__()
+        self.docx_path = docx_path
+        self.mlaas_token = mlaas_token
+    
+    def run(self):
+        try:
+            from modules.meeting_notes import (
+                parse_meeting_docx, format_transcript_for_llm,
+            )
+            
+            self.status_update.emit("Parsing transcript…")
+            blocks = parse_meeting_docx(self.docx_path)
+            
+            if not blocks:
+                self.error.emit("No speaker blocks found in the document. Check the format.")
+                return
+            
+            self.status_update.emit(f"Found {len(blocks)} speaker blocks. Formatting…")
+            transcript = format_transcript_for_llm(blocks)
+            
+            if not self.mlaas_token:
+                self.error.emit("No MLAAS Bearer token provided. Enter it in the Subtitles tab.")
+                return
+            
+            self.status_update.emit("Sending to MLAAS for summarization…")
+            config = MLAASConfig(bearer_token=self.mlaas_token)
+            result = summarize_text_mlaas(
+                transcript, config,
+                progress_callback=lambda msg: self.status_update.emit(msg),
+            )
+            
+            self.finished.emit(result)
+            
+        except ImportError as e:
+            self.error.emit(f"Missing dependency: {e}\nInstall with: pip install python-docx")
+        except Exception as e:
+            self.error.emit(f"Error: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# FILE TRANSLATION THREAD
+# ═══════════════════════════════════════════════════════════════
+
+def _read_file_content(filepath: str) -> str:
+    """Read content from SRT, DOCX, or TXT file."""
+    ext = os.path.splitext(filepath)[1].lower()
+    
+    if ext == ".docx":
+        try:
+            import docx
+            doc = docx.Document(filepath)
+            return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        except ImportError:
+            raise ImportError("python-docx is required. Install with: pip install python-docx")
+    else:
+        # SRT, TXT, and other plain text
+        for encoding in ("utf-8", "utf-8-sig", "latin-1"):
+            try:
+                with open(filepath, "r", encoding=encoding) as f:
+                    return f.read()
+            except UnicodeDecodeError:
+                continue
+        raise ValueError(f"Cannot decode file: {filepath}")
+
+
+def _translate_srt_content(
+    srt_text: str, src_lang: str, dst_lang: str, engine: str,
+    mlaas_token: str, progress_cb=None,
+) -> str:
+    """Translate SRT content preserving timestamps and structure."""
+    import re as _re
+    blocks = _re.split(r"\n\n+", srt_text.strip())
+    translated_blocks = []
+    total = len(blocks)
+    
+    for i, block in enumerate(blocks):
+        lines = block.strip().split("\n")
+        if len(lines) >= 3:
+            # lines[0] = index, lines[1] = timestamp, lines[2:] = text
+            text_lines = "\n".join(lines[2:])
+            translated = _translate_single(text_lines, src_lang, dst_lang, engine, mlaas_token)
+            translated_blocks.append(f"{lines[0]}\n{lines[1]}\n{translated}")
+        else:
+            translated_blocks.append(block)
+        
+        if progress_cb and total > 0:
+            progress_cb(int(((i + 1) / total) * 100))
+    
+    return "\n\n".join(translated_blocks)
+
+
+def _translate_plain_content(
+    text: str, src_lang: str, dst_lang: str, engine: str,
+    mlaas_token: str, progress_cb=None,
+) -> str:
+    """Translate plain text content line by line."""
+    lines = [l for l in text.split("\n") if l.strip()]
+    translated_lines = []
+    total = len(lines)
+    
+    for i, line in enumerate(lines):
+        translated = _translate_single(line.strip(), src_lang, dst_lang, engine, mlaas_token)
+        translated_lines.append(translated)
+        
+        if progress_cb and total > 0:
+            progress_cb(int(((i + 1) / total) * 100))
+    
+    return "\n".join(translated_lines)
+
+
+def _translate_single(text: str, src: str, dst: str, engine: str, mlaas_token: str) -> str:
+    """Translate a single text string using the selected engine."""
+    if not text.strip():
+        return text
+    
+    if engine == "mlaas":
+        from modules.mlaas_client import translate_text_mlaas, MLAASConfig
+        config = MLAASConfig(bearer_token=mlaas_token)
+        return translate_text_mlaas(text, dst, config)
+    elif engine == "marian" and MARIAN_AVAILABLE:
+        translator = MarianTranslator(src, dst)
+        if translator.load_model():
+            results = translator.translate_batch([text], batch_size=1)
+            return results[0] if results else text
+        return text
+    else:
+        # Google Translate
+        if GOOGLE_TRANSLATE_AVAILABLE:
+            return GoogleTranslator(source=src if src != "auto" else "auto", target=dst).translate(text) or text
+        return text
+
+
+class TranslateFileThread(QThread):
+    """Worker thread for file translation."""
+    
+    finished = Signal(str)
+    error = Signal(str)
+    status_update = Signal(str)
+    progress_update = Signal(int)
+    
+    def __init__(self, filepath: str, src_lang: str, dst_lang: str,
+                 engine: str, mlaas_token: str):
+        super().__init__()
+        self.filepath = filepath
+        self.src_lang = src_lang
+        self.dst_lang = dst_lang
+        self.engine = engine
+        self.mlaas_token = mlaas_token
+    
+    def run(self):
+        try:
+            self.status_update.emit("Reading file…")
+            content = _read_file_content(self.filepath)
+            
+            if not content.strip():
+                self.error.emit("File is empty or could not be read.")
+                return
+            
+            ext = os.path.splitext(self.filepath)[1].lower()
+            line_count = content.count("\n") + 1
+            self.status_update.emit(f"Translating {line_count} lines via {self.engine}…")
+            
+            def on_progress(pct):
+                self.progress_update.emit(pct)
+                self.status_update.emit(f"Translating… {pct}%")
+            
+            if ext == ".srt":
+                result = _translate_srt_content(
+                    content, self.src_lang, self.dst_lang,
+                    self.engine, self.mlaas_token, on_progress,
+                )
+            else:
+                result = _translate_plain_content(
+                    content, self.src_lang, self.dst_lang,
+                    self.engine, self.mlaas_token, on_progress,
+                )
+            
+            self.finished.emit(result)
+            
+        except Exception as e:
+            self.error.emit(f"Translation error: {str(e)}")
+
+
+
+class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
+    """Main application window."""
+    
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.adjustSize()
         
-        # Set the window icon
-        icon_path = os.path.join(os.path.dirname(__file__), "icons", "favicon.png")
-        self.setWindowIcon(QIcon(icon_path))
-        
-        # Set other icons
-        self.openBtn.setIcon(QIcon(os.path.join(os.path.dirname(__file__), "icons", "folder.png")))
-        self.themeBtn.setIcon(QIcon(os.path.join(os.path.dirname(__file__), "icons", "paint.png")))
-        
-        # Set the down arrow icon for QComboBox
-        self.model_size_dropdown.setStyleSheet(
-            "QComboBox::down-arrow { image: url(../icons/drop-down-menu.png); width: 16px; height: 16px; }"
-        )
-        self.source_language_dropdown.setStyleSheet(
-            "QComboBox::down-arrow { image: url(../icons/drop-down-menu.png); width: 16px; height: 16px; }"
-        )
-        self.target_language_dropdown.setStyleSheet(
-            "QComboBox::down-arrow { image: url(../icons/drop-down-menu.png); width: 16px; height: 16px; }"
-        )
-        self.target_engine.setStyleSheet(
-            "QComboBox::down-arrow { image: url(../icons/drop-down-menu.png); width: 16px; height: 16px; }"
-        )
-
-        # Load and apply the default stylesheet (Dark theme)
-        stylesheet_path = os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css")
-        if (os.path.exists(stylesheet_path)):
-            with open(stylesheet_path, "r") as file:
-                self.setStyleSheet(file.read())
-        else:
-            print(f"Error: Stylesheet not found at {stylesheet_path}")
+        self.input_file_path = None
+        self.output_folder_path = None
+        self.docx_path = None
+        self.trans_file_path = None
+        self.subtitle_thread = None
+        self.notes_thread = None
+        self.translate_thread = None
         self.current_theme = "Dark"
         
-        # Add a loading label and movie
-        self.loading_movie = QMovie(os.path.join(os.path.dirname(__file__), "icons", "loading.gif"))
+        # ── Set window icon ─────────────────────────────────────
+        icon_path = os.path.join(SCRIPT_DIR, "icons", "favicon.png")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
         
-        self.standbyMovie = QMovie(os.path.join(os.path.dirname(__file__), "icons", "start.gif"))
-        self.statusimage.setMovie(self.standbyMovie)
-        self.standbyMovie.start()
-        self.statusLb.setText("Standby")
-                
-        self.progressBar.setValue(0)
-        self.done_pixmap = QPixmap(os.path.join(os.path.dirname(__file__), "icons", "done.jpg")).scaled(130, 150)
+        # ── Load dark theme ─────────────────────────────────────
+        self._load_theme("Dark")
         
-        self.input_file_button.clicked.connect(self.select_input_file)
-        self.output_folder_button.clicked.connect(self.select_output_folder)
-        self.start_button.clicked.connect(self.start_subtitle_thread)
-        self.model_size_dropdown.currentTextChanged.connect(self.changeModelsinfo)
+        # ── Setup animations ────────────────────────────────────
+        self.loading_movie = None
+        self.standby_movie = None
+        self.done_pixmap = None
         
-        self.themeBtn.clicked.connect(self.changeThemes)
+        loading_gif = os.path.join(SCRIPT_DIR, "icons", "loading.gif")
+        start_gif = os.path.join(SCRIPT_DIR, "icons", "start.gif")
+        done_img = os.path.join(SCRIPT_DIR, "icons", "done.jpg")
         
-        self.openBtn.clicked.connect(self.open_output_folder)
-        self.boostSlider.setValue(3)  # Set default value of boost slider to 3
+        if os.path.exists(loading_gif):
+            self.loading_movie = QMovie(loading_gif)
+        if os.path.exists(start_gif):
+            self.standby_movie = QMovie(start_gif)
+            self.statusImage.setMovie(self.standby_movie)
+            self.standby_movie.start()
+        if os.path.exists(done_img):
+            self.done_pixmap = QPixmap(done_img).scaled(
+                130, 130, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
         
-        self.subtitle_thread = None
+        # ── Populate dropdowns ──────────────────────────────────
+        self._setup_model_dropdown()
+        self._setup_language_dropdowns()
+        self._setup_translation_engines()
         
-        # Call this in your __init__ method after UI setup
-        self.setup_language_dropdowns()
-
-    def setup_language_dropdowns(self):
-        """Setup language dropdowns with proper mapping between display names and codes"""
-        # Clear existing items
+        # ── Connect signals ─────────────────────────────────────
+        self.selectFileBtn.clicked.connect(self._select_input_file)
+        self.selectOutputBtn.clicked.connect(self._select_output_folder)
+        self.startButton.clicked.connect(self._start_subtitles)
+        self.model_size_dropdown.currentTextChanged.connect(self._on_model_changed)
+        self.themeBtn.clicked.connect(self._toggle_theme)
+        self.openFolderBtn.clicked.connect(self._open_output_folder)
+        self.getTokenBtn.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://mlaas.virtuosgames.com/auth/token"))
+        )
+        
+        # Meeting notes signals
+        self.selectDocxBtn.clicked.connect(self._select_docx)
+        self.generateNotesBtn.clicked.connect(self._generate_meeting_notes)
+        self.saveNotesBtn.clicked.connect(self._save_meeting_notes)
+        
+        # Translation tab signals
+        self.selectTransFileBtn.clicked.connect(self._select_trans_file)
+        self.translateFileBtn.clicked.connect(self._start_file_translation)
+        self.saveTransBtn.clicked.connect(self._save_translation)
+        
+        # ── Load saved MLAAS config ──────────────────────────
+        self._load_mlaas_config()
+        
+        # ── Set window title with version ───────────────────
+        self.setWindowTitle(f"DogeAutoSub v{APP_VERSION}")
+        self.versionLabel.setText(f"v{APP_VERSION}")
+        
+        # ── Check for updates (non-blocking) ────────────────
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(2000, self._check_for_updates)
+        
+        print(f"DogeAutoSub v{APP_VERSION} initialized successfully")
+    
+    # ── Dropdown Setup ──────────────────────────────────────────
+    
+    def _setup_model_dropdown(self):
+        self.model_size_dropdown.clear()
+        for model in MODEL_TYPES:
+            self.model_size_dropdown.addItem(model)
+        self.model_size_dropdown.setCurrentText("turbo")
+        self._on_model_changed("turbo")
+    
+    def _setup_language_dropdowns(self):
         self.source_language_dropdown.clear()
         self.target_language_dropdown.clear()
-        
-        # Add "Auto" detection option only to source language
         self.source_language_dropdown.addItem("Auto")
-        
-        # Add all languages from LANGUAGE_CODES_AI
         for code, name in LANGUAGE_CODES_AI:
-            if code != "auto":  # Skip auto in the loop since we already added it
+            if code != "auto":
                 self.source_language_dropdown.addItem(name)
                 self.target_language_dropdown.addItem(name)
-        
-        # Set default selections
         self.source_language_dropdown.setCurrentText("Auto")
         self.target_language_dropdown.setCurrentText("English")
-
-    def load_stylesheet(self, filename):
-        with open(filename, "r") as file:
-            self.setStyleSheet(file.read())
-
-    def changeThemes(self):
-        if self.current_theme == "Dark":
-            self.load_stylesheet(os.path.join(os.path.dirname(__file__), "modules", "styleSheetLight.css"))
-            self.current_theme = "Light"
-        else:
-            self.load_stylesheet(os.path.join(os.path.dirname(__file__), "modules", "styleSheetDark.css"))
-            self.current_theme = "Dark"
-
-    def open_output_folder(self):
-        input_file_path = getattr(self, 'input_file_path', None)
-        output_folder_path = getattr(self, 'output_folder_path', None)
-        if not input_file_path:
-            print("Error: No input file selected.")
-            return
-        if not output_folder_path:
-            output_folder_path = os.path.dirname(input_file_path)
-        
-        if output_folder_path and os.path.exists(output_folder_path):
-            QDesktopServices.openUrl(QUrl.fromLocalFile(output_folder_path))
-        else:
-            print("Error: Output folder path is not set or does not exist.")
-
-    def start_subtitle_thread(self):
-
-        self.progressBar.setValue(0)
-        # Get selected file path and output folder path
-        input_file_path = getattr(self, 'input_file_path', None)
-        output_folder_path = getattr(self, 'output_folder_path', None)
-        
-        if not input_file_path:
-            print("Error: No input file selected.")
-            return
-        
-        if not output_folder_path:
-            # Set default output folder to the folder containing the source file
-            output_folder_path = os.path.dirname(input_file_path)
-            self.output_file_path_display.setText(output_folder_path)
-
-        # Get selected source and target languages
-        source_lang = self.source_language_dropdown.currentText()
-        target_lang = self.target_language_dropdown.currentText()
-        modelSize = self.model_size_dropdown.currentText()
-        engine = self.target_engine.currentText()
-
-        # Get the current value of the boostSlider
-        volume = self.boostSlider.value()
-
-        # Build the autosub arguments with the selected options
-        autosub_args = [
-            input_file_path,
-            "-S", source_lang,
-            "-D", target_lang,
-            "-o", output_folder_path,
-            "-M", modelSize,
-            "-E", engine,
-            "--volume", str(volume)
-        ]
-        
-        parser = argparse.ArgumentParser()
-        parser.add_argument("source_path", help="Path to the video or audio file to subtitle", nargs="?")
-        parser.add_argument("-o", "--output-folder", help="Folder to save the output SRT file", default=os.getcwd())
-        parser.add_argument("-S", "--src-language", help="Language spoken in the source file", default=None)
-        parser.add_argument("-M", "--model-size", help="Whisper model size (tiny, base, small, medium, large)", default="base")
-        parser.add_argument('-F', '--format', help="Destination subtitle format", default="srt")
-        parser.add_argument('-D', '--dst-language', help="Desired language for the subtitles", default="en")
-        parser.add_argument('-E', '--translateEngine', help="Type of Translator Engine", default="whisper")
-        parser.add_argument('--volume', help="Volume boost for audio extraction", type=int, default=3)
-        args = parser.parse_args(autosub_args)
-
-        # Create and start the subtitle thread
-        self.subtitle_thread = SubtitleThread(args=args)
-        self.subtitle_thread.task_start.connect(self.start_loading_animation)
-        self.subtitle_thread.task_complete.connect(self.stop_loading_animation)
-        self.subtitle_thread.progress_update.connect(self.update_progress_bar)
-        self.subtitle_thread.status_update.connect(self.update_status_label)
-        self.subtitle_thread.duration_update.connect(self.update_duration_lable)
-
-        self.subtitle_thread.start()
-        
-    def update_progress_bar(self, value):
-        self.progressBar.setValue(value)
-
-    def update_status_label(self, status):
-        self.statusLb.setText(status)
     
-    def update_duration_lable(self, status):
-        self.estlb.setText(status)
-           
-    def changeModelsinfo(self, modelSize):
-        # Update VRamUsage and rSpeed based on the selected model size
-        if (model_info := MODEL_INFO.get(modelSize)):
-            self.VRamUsage.setText(model_info["vram"])
-            self.rSpeed.setText(model_info["speed"])
-        else:
-            self.VRamUsage.setText("Unknown")
-            self.rSpeed.setText("Unknown")
+    def _setup_translation_engines(self):
+        # Subtitles tab engine
+        self.target_engine.clear()
+        self.target_engine.addItem("mlaas")
+        self.target_engine.addItem("google")
+        self.target_engine.addItem("whisper")
+        if MARIAN_AVAILABLE:
+            self.target_engine.addItem("marian")
+        self.target_engine.setCurrentText("mlaas")
         
-    def start_loading_animation(self):
-        # start the loading animation
-        self.statusLb.setText("Processing...")
-        self.statusimage.setMovie(self.loading_movie)
-        self.loading_movie.start()
+        # Translation tab dropdowns — reuse same languages
+        self.trans_src_lang.clear()
+        self.trans_tgt_lang.clear()
+        self.trans_src_lang.addItem("Auto")
+        for code, name in LANGUAGE_CODES_AI:
+            if code != "auto":
+                self.trans_src_lang.addItem(name)
+                self.trans_tgt_lang.addItem(name)
+        self.trans_src_lang.setCurrentText("Auto")
+        self.trans_tgt_lang.setCurrentText("Vietnamese")
+        
+        # Translation tab engine
+        self.trans_engine.clear()
+        self.trans_engine.addItem("mlaas")
+        self.trans_engine.addItem("google")
+        if MARIAN_AVAILABLE:
+            self.trans_engine.addItem("marian")
+        self.trans_engine.setCurrentText("mlaas")
+    
+    # ── Theme ───────────────────────────────────────────────────
+    
+    def _load_theme(self, theme: str):
+        filename = "styleSheetDark.css" if theme == "Dark" else "styleSheetLight.css"
+        path = os.path.join(SCRIPT_DIR, "modules", filename)
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                self.setStyleSheet(f.read())
+        self.current_theme = theme
+    
+    def _toggle_theme(self):
+        new_theme = "Light" if self.current_theme == "Dark" else "Dark"
+        self._load_theme(new_theme)
+    
+    # ── File Selection ──────────────────────────────────────────
+    
+    def _select_input_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Video File", "",
+            "Media Files (*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.m4a *.mp3 *.wav *.flac)"
+        )
+        if path:
+            self.input_file_path = path
+            self.selectFileBtn.setText(f"🎬  {os.path.basename(path)}")
+            self.filePathLabel.setText(os.path.dirname(path))
+            if not self.output_folder_path:
+                self.output_folder_path = os.path.dirname(path)
+    
+    def _select_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        if folder:
+            self.output_folder_path = folder
+            self.selectOutputBtn.setText(f"📁  {os.path.basename(folder)}")
+    
+    def _open_output_folder(self):
+        folder = self.output_folder_path
+        if not folder and self.input_file_path:
+            folder = os.path.dirname(self.input_file_path)
+        if folder and os.path.exists(folder):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
+    
+    # ── Model Info ──────────────────────────────────────────────
+    
+    def _on_model_changed(self, model_size: str):
+        info = MODEL_INFO.get(model_size, {})
+        self.VRamUsage.setText(info.get("vram", "—"))
+        self.rSpeed.setText(info.get("speed", "—"))
+    
+    # ── Subtitle Processing ─────────────────────────────────────
+    
+    def _start_subtitles(self):
+        if not self.input_file_path:
+            QMessageBox.warning(self, "No File", "Please select a video file first.")
+            return
+        
+        if self.subtitle_thread and self.subtitle_thread.isRunning():
+            return
+        
+        args = SubtitleArgs(
+            source_path=self.input_file_path,
+            output_folder=self.output_folder_path or os.path.dirname(self.input_file_path),
+            src_language=self.source_language_dropdown.currentText(),
+            dst_language=self.target_language_dropdown.currentText(),
+            model_size=self.model_size_dropdown.currentText(),
+            translate_engine=self.target_engine.currentText(),
+            volume=self.boostSlider.value(),
+            mlaas_token=self.mlaasTokenInput.text().strip(),
+        )
+        
+        self.subtitle_thread = SubtitleThread(args)
+        self.subtitle_thread.task_start.connect(self._on_task_start)
+        self.subtitle_thread.task_complete.connect(self._on_task_complete)
+        self.subtitle_thread.progress_update.connect(self.progressBar.setValue)
+        self.subtitle_thread.status_update.connect(self.statusLabel.setText)
+        self.subtitle_thread.duration_update.connect(self.etaLabel.setText)
+        self.subtitle_thread.start()
+    
+    def _on_task_start(self):
+        self.startButton.setEnabled(False)
+        self.startButton.setText("⏳  Processing…")
+        self.statusLabel.setText("Starting…")
         self.progressBar.setValue(0)
-
-    def stop_loading_animation(self):
+        if self.loading_movie:
+            self.statusImage.setMovie(self.loading_movie)
+            self.loading_movie.start()
+    
+    def _on_task_complete(self):
+        self.startButton.setEnabled(True)
+        self.startButton.setText("▶  START PROCESSING")
         self.progressBar.setValue(100)
-        self.statusLb.setText("Done <3")
-        # Stop the loading animation
-        self.loading_movie.stop()
-        self.statusimage.setPixmap(self.done_pixmap)
-        self.progressBar.setValue(100)
-
-    def select_input_file(self):
-        # Allow the user to select the input movie file
-        self.input_file_path, _ = QFileDialog.getOpenFileName(self, "Select Movie File", "", "Movie Files (*.mp4 *.avi *.mkv *.mov)")
-        if self.input_file_path:
-            self.input_file_button.setText(os.path.basename(self.input_file_path))
+        if self.loading_movie:
+            self.loading_movie.stop()
+        if self.done_pixmap:
+            self.statusImage.setPixmap(self.done_pixmap)
+    
+    # ── Meeting Notes ───────────────────────────────────────────
+    
+    def _select_docx(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Meeting Transcript", "",
+            "Word Documents (*.docx);;All Files (*.*)"
+        )
+        if path:
+            self.docx_path = path
+            self.selectDocxBtn.setText(f"📎  {os.path.basename(path)}")
+            self.docxPathLabel.setText(path)
+    
+    def _generate_meeting_notes(self):
+        if not self.docx_path:
+            QMessageBox.warning(self, "No File", "Please upload a DOCX transcript first.")
+            return
         
-        output_folder_path = os.path.dirname(self.input_file_path)
-        self.output_file_path_display.setText(output_folder_path)
+        if self.notes_thread and self.notes_thread.isRunning():
+            return
+        
+        mlaas_token = self.mlaasTokenInput.text().strip()
+        if not mlaas_token:
+            QMessageBox.warning(self, "No Token", "Please enter your MLAAS Bearer token in the Subtitles tab.")
+            return
+        
+        self.generateNotesBtn.setEnabled(False)
+        self.generateNotesBtn.setText("⏳  Generating…")
+        self.notesOutput.clear()
+        
+        self.notes_thread = MeetingNotesThread(self.docx_path, mlaas_token)
+        self.notes_thread.finished.connect(self._on_notes_finished)
+        self.notes_thread.error.connect(self._on_notes_error)
+        self.notes_thread.status_update.connect(self.notesStatusLabel.setText)
+        self.notes_thread.start()
+    
+    def _on_notes_finished(self, result: str):
+        self.notesOutput.setPlainText(result)
+        self.notesStatusLabel.setText("Notes generated successfully ✓")
+        self.generateNotesBtn.setEnabled(True)
+        self.generateNotesBtn.setText("✨  Generate Meeting Notes")
+    
+    def _on_notes_error(self, error: str):
+        self.notesOutput.setPlainText(f"Error:\n{error}")
+        self.notesStatusLabel.setText("Error generating notes")
+        self.generateNotesBtn.setEnabled(True)
+        self.generateNotesBtn.setText("✨  Generate Meeting Notes")
+    
+    def _save_meeting_notes(self):
+        text = self.notesOutput.toPlainText()
+        if not text.strip():
+            QMessageBox.warning(self, "Empty", "No notes to save.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Meeting Notes", "",
+            "Text Files (*.txt);;Markdown (*.md);;All Files (*.*)"
+        )
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+            self.notesStatusLabel.setText(f"Saved to {os.path.basename(path)}")
+    
+    # ── File Translation ────────────────────────────────────────
+    
+    def _select_trans_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select File to Translate", "",
+            "Supported Files (*.srt *.docx *.txt *.sub *.vtt);;All Files (*.*)"
+        )
+        if path:
+            self.trans_file_path = path
+            self.selectTransFileBtn.setText(f"📎  {os.path.basename(path)}")
+            self.transFilePathLabel.setText(path)
+    
+    def _get_lang_code(self, display_name: str) -> str:
+        """Convert display name back to language code."""
+        if display_name == "Auto":
+            return "auto"
+        for code, name in LANGUAGE_CODES_AI:
+            if name == display_name:
+                return code
+        return display_name.lower()[:2]
+    
+    def _start_file_translation(self):
+        if not self.trans_file_path:
+            QMessageBox.warning(self, "No File", "Please select a file to translate.")
+            return
+        
+        if self.translate_thread and self.translate_thread.isRunning():
+            return
+        
+        src = self._get_lang_code(self.trans_src_lang.currentText())
+        dst = self._get_lang_code(self.trans_tgt_lang.currentText())
+        engine = self.trans_engine.currentText()
+        mlaas_token = self.mlaasTokenInput.text().strip()
+        
+        if engine == "mlaas" and not mlaas_token:
+            QMessageBox.warning(self, "No Token", "MLAAS engine requires a Bearer token. Enter it in the Subtitles tab.")
+            return
+        
+        self.translateFileBtn.setEnabled(False)
+        self.translateFileBtn.setText("⏳  Translating…")
+        self.transOutput.clear()
+        self.transStatusLabel.setText("Starting…")
+        
+        self.translate_thread = TranslateFileThread(
+            self.trans_file_path, src, dst, engine, mlaas_token,
+        )
+        self.translate_thread.finished.connect(self._on_trans_finished)
+        self.translate_thread.error.connect(self._on_trans_error)
+        self.translate_thread.status_update.connect(self.transStatusLabel.setText)
+        self.translate_thread.start()
+    
+    def _on_trans_finished(self, result: str):
+        self.transOutput.setPlainText(result)
+        self.transStatusLabel.setText("Translation complete ✓")
+        self.translateFileBtn.setEnabled(True)
+        self.translateFileBtn.setText("🌐  Translate File")
+    
+    def _on_trans_error(self, error: str):
+        self.transOutput.setPlainText(f"Error:\n{error}")
+        self.transStatusLabel.setText("Translation failed")
+        self.translateFileBtn.setEnabled(True)
+        self.translateFileBtn.setText("🌐  Translate File")
+    
+    def _save_translation(self):
+        text = self.transOutput.toPlainText()
+        if not text.strip():
+            QMessageBox.warning(self, "Empty", "No translated content to save.")
+            return
+        
+        # Default to same extension as source
+        default_ext = ""
+        if self.trans_file_path:
+            base, ext = os.path.splitext(self.trans_file_path)
+            dst_code = self._get_lang_code(self.trans_tgt_lang.currentText())
+            default_ext = f"{base}_{dst_code}{ext}"
+        
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Translation", default_ext,
+            "SRT Files (*.srt);;Text Files (*.txt);;All Files (*.*)"
+        )
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+            self.transStatusLabel.setText(f"Saved to {os.path.basename(path)}")
+    
+    # ── MLAAS Config Persistence ─────────────────────────────────
+    
+    def _mlaas_config_path(self) -> str:
+        return os.path.join(SCRIPT_DIR, "modules", "mlaas_config.json")
+    
+    def _save_mlaas_config(self):
+        try:
+            config = MLAASConfig(bearer_token="")  # Don't persist temp token
+            config.save_to_file(self._mlaas_config_path())
+        except Exception as e:
+            print(f"Failed to save MLAAS config: {e}")
+    
+    def _load_mlaas_config(self):
+        try:
+            config = MLAASConfig.load_from_file(self._mlaas_config_path())
+            # builtin_api_key loaded if it exists
+        except Exception:
+            pass
+    
+    # ── Auto-Update ─────────────────────────────────────────────
+    
+    def _check_for_updates(self):
+        """Check for updates in a background thread (non-blocking)."""
+        class UpdateCheckThread(QThread):
+            update_found = Signal(object)
+            
+            def run(self):
+                update = check_for_update()
+                if update and update.is_newer:
+                    self.update_found.emit(update)
+        
+        self._update_thread = UpdateCheckThread()
+        self._update_thread.update_found.connect(self._on_update_available)
+        self._update_thread.start()
+    
+    def _on_update_available(self, update):
+        """Show update dialog when a new version is found."""
+        notes = f"\n\nRelease notes:\n{update.notes}" if update.notes else ""
+        
+        reply = QMessageBox.question(
+            self,
+            "Update Available",
+            f"A new version of DogeAutoSub is available!\n\n"
+            f"Current: v{APP_VERSION}\n"
+            f"New: v{update.version}"
+            f"{notes}\n\n"
+            f"Would you like to update now?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self._apply_update(update)
+    
+    def _apply_update(self, update):
+        """Download and apply the update, then restart."""
+        self.statusLabel.setText(f"Downloading update v{update.version}…")
+        
+        success = download_and_apply_update(
+            update,
+            progress_callback=lambda msg: self.statusLabel.setText(msg),
+        )
+        
+        if success:
+            reply = QMessageBox.information(
+                self,
+                "Update Complete",
+                f"DogeAutoSub has been updated to v{update.version}.\n"
+                f"The app will restart now.",
+                QMessageBox.StandardButton.Ok,
+            )
+            restart_app()
+        else:
+            QMessageBox.warning(
+                self,
+                "Update Failed",
+                "Failed to apply the update. Please try again later\n"
+                "or download the latest version manually.",
+            )
 
-    def select_output_folder(self):
-        # Allow the user to select the output folder
-        self.output_folder_path = QFileDialog.getExistingDirectory(self, "Select Output Folder")
-        if self.output_folder_path:
-            self.output_file_path_display.setText(self.output_folder_path)
+
+# ═══════════════════════════════════════════════════════════════
+# ENTRY POINT
+# ═══════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
-    app = QApplication([])
-    doge = DogeAutoSub()
-    doge.show()
-    app.exec()
+    try:
+        print("Starting DogeAutoSub…")
+        app = QApplication(sys.argv)
+        app.setApplicationName("DogeAutoSub")
+        app.setApplicationVersion("2.0")
+        
+        window = DogeAutoSub()
+        window.show()
+        
+        exit_code = app.exec()
+        sys.exit(exit_code)
+        
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        try:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setWindowTitle("DogeAutoSub Error")
+            msg.setText(f"Failed to start: {str(e)}")
+            msg.exec()
+        except Exception:
+            pass
+        sys.exit(1)

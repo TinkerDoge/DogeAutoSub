@@ -24,7 +24,7 @@ TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audi
 
 
 
-def load_audio(file: str, ffmpeg_path: str, sr: int = SAMPLE_RATE):
+def load_audio(file: str, ffmpeg_path: str = "ffmpeg", sr: int = SAMPLE_RATE):
     """
     Load an audio file and resample to the target sample rate if necessary.
 
@@ -45,6 +45,12 @@ def load_audio(file: str, ffmpeg_path: str, sr: int = SAMPLE_RATE):
         The audio waveform
     """
     print(f"Loading audio file: {file}")
+    
+    # Use the provided ffmpeg_path or fallback to "ffmpeg"
+    if not ffmpeg_path or not os.path.exists(ffmpeg_path):
+        print(f"Warning: ffmpeg not found at {ffmpeg_path}, using system ffmpeg")
+        ffmpeg_path = "ffmpeg"
+    
     if sr == SAMPLE_RATE:
         # If the sample rate is already 16000 Hz, load the audio directly
         cmd = [
@@ -74,6 +80,7 @@ def load_audio(file: str, ffmpeg_path: str, sr: int = SAMPLE_RATE):
         print("Audio loaded successfully")
     except subprocess.CalledProcessError as e:
         print(f"Error executing ffmpeg command: {e}")
+        print(f"stderr: {e.stderr.decode() if e.stderr else 'No stderr'}")
         raise
 
     return np.frombuffer(out, np.int16).astype(np.float32) / 32768.0

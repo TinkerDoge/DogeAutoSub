@@ -1,89 +1,127 @@
-# DogeAutoSub
+# DogeAutoSub - Automatic Subtitle Generation
 
-## Automatic Subtitle Generator
-
-DogeAutoSub is a desktop application that automatically generates subtitles for video files using OpenAI's Whisper speech recognition technology. It supports multiple languages, translation capabilities, and customizable options for optimal subtitle generation.
-
+DogeAutoSub is a powerful desktop application that automatically generates subtitles for video files using OpenAI's Whisper model and provides translation capabilities through multiple engines.
 
 ## Features
 
-- **Automatic Speech Recognition**: Uses Whisper models to transcribe audio from video files
-- **Multiple Language Support**: Detects and transcribes in numerous languages
-- **Translation Options**: Translate subtitles from source language to target language
-- **Model Selection**: Choose from different Whisper model sizes (tiny, base, small, medium, large, turbo)
-- **Translation Engines**: Select between Whisper or Google Translate for translations
-- **Audio Enhancement**: Adjust volume boost for better recognition of quiet audio
-- **User-Friendly Interface**: Simple and intuitive UI with progress tracking
-- **Estimated Time Remaining**: Displays time estimates for the subtitling process
-- **Dark/Light Theme**: Toggle between dark and light UI themes
-
-## Installation
-
-1. Download the latest version of DogeAutoSub from the [releases page].
-2. Extract the ZIP file to a location of your choice.
-3. Run the `DogeAutoSub.exe` executable.
-4. First run might took a while to download the Whisper Models, you can download the models before use and put them in DogeAutoSubApp\_internal\modules\models 
-
-No additional installation or dependencies required - everything is packaged within the application.
+- **Automatic Speech Recognition**: Uses OpenAI Whisper for high-quality transcription
+- **Multiple Model Sizes**: Support for tiny, base, small, medium, and large models
+- **Multi-language Support**: Auto-detect language or specify source language
+- **Translation Engines**: 
+  - Google Translate (online)
+  - MarianMT (offline)
+  - Whisper (built-in)
+- **GPU Acceleration**: CUDA support for faster processing
+- **User-friendly GUI**: Dark/Light theme support
+- **Progress Tracking**: Real-time progress and time estimation
 
 ## System Requirements
 
-- Windows 10 or later (64-bit)
-- 4GB RAM minimum (8GB+ recommended for larger models)
-- GPU with CUDA support recommended for faster processing
-- 2GB free disk space
+- Windows 10/11 (64-bit)
+- 4GB RAM minimum (8GB+ recommended for large models)
+- GPU with CUDA support (optional, for acceleration)
+- Internet connection (for Google Translate and model downloads)
+
+## Installation
+
+### Option 1: Download Installer (Recommended)
+1. Download the latest installer from [Releases](https://github.com/yourusername/DogeAutoSub/releases)
+2. Run `DogeAutoSub-Setup-v1.0.0.exe`
+3. Follow the installation wizard
+
+### Option 2: Portable Version
+1. Download the portable version from [Releases]
+2. Extract to desired folder
+3. Run `DogeAutoSub.exe`
 
 ## Usage
 
-1. **Select Input File**: Click "Browse" to select your video file (supports .mp4, .avi, .mkv, .mov)
-2. **Choose Output Location**: Select where to save the generated subtitle files
-3. **Select Model Size**: Choose based on your needs for accuracy vs. speed
-4. **Source Language**: Select the language spoken in the video or choose "Auto" for automatic detection
-5. **Target Language**: Select the language for translated subtitles
-6. **Translation Engine**: Choose between Whisper or Google Translate
-7. **Audio Boost**: Adjust if your video has low volume
-8. **Click Start**: Begin the subtitle generation process
+1. **Select Input Video**: Click "Select Video File" and choose your video file
+2. **Choose Output Folder**: Select where to save subtitle files (optional)
+3. **Configure Settings**:
+   - Source Language: Auto-detect or specify
+   - Target Language: Choose translation target
+   - Model Size: Balance between speed and accuracy
+   - Translation Engine: Select your preferred method
+4. **Start Processing**: Click "Start" and wait for completion
 
-Generated subtitles will be saved in SRT format in the specified output folder.
+## Supported Formats
 
-## Model Information
+**Input**: MP4, AVI, MKV, MOV, and other common video formats
+**Output**: SRT subtitle files
 
-| Size   | Parameters | English-only Model | Multilingual Model | Required VRAM | Relative Speed |
-|--------|------------|--------------------|--------------------|---------------|----------------|
-| tiny   | 39 M       | tiny.en            | tiny               | ~1 GB         | ~10x           |
-| base   | 74 M       | base.en            | base               | ~1 GB         | ~7x            |
-| small  | 244 M      | small.en           | small              | ~2 GB         | ~4x            |
-| medium | 769 M      | medium.en          | medium             | ~5 GB         | ~2x            |
-| large  | 1550 M     | N/A                | large              | ~10 GB        | 1x             |
-| turbo  | 809 M      | N/A                | turbo              | ~6 GB         | ~8x            |
+## Building from Source
 
-- **Tiny**: Fastest option, best for quick transcriptions where perfect accuracy isn't critical
-- **Base**: Good balance for shorter content with clear audio
-- **Small**: Better accuracy for most everyday uses
-- **Medium**: High accuracy with reasonable processing time
-- **Large**: Highest accuracy, best for difficult audio or accents
-- **Turbo**: Fast processing with quality comparable to the medium model
+### Prerequisites
+- Python 3.11
+- Git
 
-The application will automatically use GPU acceleration (CUDA) when available to speed up processing times.
+### Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/DogeAutoSub.git
+   cd DogeAutoSub
+   ```
+
+2. Create virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements-full.txt
+   ```
+
+4. Run the application:
+   ```bash
+   python AutoUI.py
+   ```
+
+### Building Executable
+1. Install PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+
+2. Build the application:
+   ```bash
+   build.bat
+   ```
 
 ## Troubleshooting
 
-- **Slow Processing**: Select a smaller model size or ensure your GPU is being utilized
-- **Low Accuracy**: Try a larger model size or increase the audio boost if audio is quiet
-- **Out of Memory Errors**: Select a smaller model size or ensure sufficient system resources
-- **Language Detection Issues**: Manually specify the source language instead of using Auto
-- **Translation Errors**: Try switching between Whisper and Google Translate engines
+### Common Issues
+
+**"Model not found" error**: 
+- Check internet connection for initial model download
+- Ensure sufficient disk space in models folder
+
+**GPU not detected**:
+- Install CUDA toolkit compatible with your GPU
+- Verify PyTorch CUDA installation
+
+**Translation fails**:
+- Check internet connection for Google Translate
+- Try MarianMT for offline translation
+
+**Empty subtitle files**:
+- Check audio quality of input video
+- Try different model sizes
+- Verify language settings
 
 ## License
 
-This software is distributed under the MIT License. See LICENSE file for more information.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgements
+## Acknowledgments
 
-- [OpenAI Whisper](https://github.com/openai/whisper) for the speech recognition technology
-- [PySide6](https://wiki.qt.io/Qt_for_Python) for the UI framework
-- [FFmpeg](https://ffmpeg.org/) for audio extraction and processing
+- OpenAI Whisper team for the amazing speech recognition model
+- PySide6 for the GUI framework
+- All open-source contributors
 
-## Contact
+## Support
 
-For bug reports, feature requests, or general feedback, please solve it yourself, sorry in advance.
+- Report issues: [GitHub Issues](https://github.com/yourusername/DogeAutoSub/issues)
+- Discussions: [GitHub Discussions](https://github.com/yourusername/DogeAutoSub/discussions)
