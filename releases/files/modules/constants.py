@@ -10,36 +10,6 @@ MODEL_INFO = {
 }
 
 
-# Update LANGUAGETRANS dictionary to ensure consistent naming and coding
-LANGUAGETRANS = {
-    'Auto': 'auto',
-    'English': 'en',
-    'Thai': 'th',
-    'Spanish': 'es',
-    'French': 'fr',
-    'German': 'de',
-    'Italian': 'it',  # Changed from 'it-IT' to match standard code
-    'chinese (simplified)': 'zh-CN', 
-    'chinese (traditional)': 'zh-TW',
-    'Japanese': 'ja',
-    'Korean': 'ko',
-    'Vietnamese': 'vi',
-    'Russian': 'ru',
-    # Additional languages for consistency with LANGUAGE_CODES_AI
-    'Portuguese': 'pt',
-    'Turkish': 'tr',
-    'Polish': 'pl',
-    'Dutch': 'nl',
-    'Arabic': 'ar',
-    'Swedish': 'sv',
-    'Indonesian': 'id',
-    'Hindi': 'hi',
-    'Finnish': 'fi',
-    'Hebrew': 'iw',  # Note: Google uses 'iw' for Hebrew
-    'Ukrainian': 'uk',
-    'Greek': 'el',
-}
-
 
 LANGUAGE_CODES_AI = [
     ("auto", "Auto"),
@@ -145,5 +115,3 @@ LANGUAGE_CODES_AI = [
 ]
 
 MODEL_TYPES = ["tiny", "base", "small", "medium", "large", "large-v3", "turbo", "distil-large-v3"]
-
-TASK_TYPES = ["transcribe", "translate"]

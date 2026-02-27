@@ -1,9 +1,9 @@
 {
-  "version": "2.0.6",
-  "filename": "DogeAutoSub_v2.0.6.zip",
-  "notes": "v2.0.6 test - verifying delta patch after PYZ fix",
+  "version": "2.1.1",
+  "filename": "DogeAutoSub_v2.1.1.zip",
+  "notes": "v2.1.1 - Batched translation (10 segments/call), switched to Claude Sonnet for ~90% cost reduction",
   "files": {
-    "AutoUI.py": "0dcabfd5527310e2f2aed3cb82e8831cbb8a27d4abc4e465c1b42355eebc2a25",
+    "AutoUI.py": "f786fd2a042daedfb200864f8d0b33669625de703e83b756ceaff6f21a61fb16",
     "ui_DogeAutoSub.py": "fedf9441094d5b18eceda121493a21e9ae6eee426f5b511994f88a09b2b37e16",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
     "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
@@ -14,15 +14,15 @@
     "icons/Logo.png": "0af2b462622eccb619b7716fd938bd99dcdbe9af960bbc1e1ce63aa54bca531d",
     "icons/paint.png": "397404be507d2747e7931b8c6eafffd86d8f2e72e49b4ca2667bb7c16e7ec7ab",
     "icons/start.gif": "92d1dc30cec47a6ce09b98a1ac42c16066b196166fbbed500db3f0369e3cd7b4",
-    "modules/chunk_processor.py": "5b356ed2bc988c377ea2c9f8e9dd63c322e7f7dd72ff23f5b878b4a76f443dcd",
-    "modules/constants.py": "e1b373d0b793570abae92439ef564b339a17667575d338a52988bbd6e5ccc699",
-    "modules/faster_whisper_engine.py": "4da22a9ee282cd9ae96da3d559160336cc7b12067a4d7fcb0eb62c318751c7dd",
+    "modules/chunk_processor.py": "bec9282c4afc0cb0d3d0a0c222db4224fa02c37e74c212d4df49a3a47f071de1",
+    "modules/constants.py": "c8c7f3209643dbb72b5e260cfdeabd5d43eb42895fcbf345c95e593e5b1a3c24",
+    "modules/faster_whisper_engine.py": "f5b48f836df05406309fd0212114e9fe4bd917b8f3f6be323fb9ae20e80f660d",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
     "modules/meeting_notes.py": "772bd62d1ae69371943649ad0175b765c4c55a6a88a1e60b25604bc32fbd1691",
-    "modules/mlaas_client.py": "39f595e398aa1790a9cf31889903fcee856daf77c41ddcae8d46e7d7d8b59077",
+    "modules/mlaas_client.py": "73d66f2663d9a5021c14921d3b9cb83948f9242662a2d3c6058d9ddc39a41f0d",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
     "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
     "modules/subtitle_args.py": "2d035cf9452ae9dafd5636e620b60ad6a864a391e5e747a9f99f56085280cbcf",
-    "modules/updater.py": "affb4169b13a31ca72af00598fbda4853d024f844baaf38ccd114f0b3e209a84"
+    "modules/updater.py": "53abaeccdadbaee8a82fbe2c6452cb7dd23e25e7dc2e54e236241c8bc425dd1e"
   }
 }

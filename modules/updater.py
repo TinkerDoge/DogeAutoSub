@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Current app version ─────────────────────────────────────────
-APP_VERSION = "2.0.6"
+APP_VERSION = "2.1.1"
 
 # Default update server — override in updater_config.json
 DEFAULT_UPDATE_URL = "http://10.76.171.156:8100"

@@ -1,9 +1,9 @@
-# v2.0.6 - Added better error handling for token expiration
+# v2.1.1 - Batched translation, Sonnet for translation / Opus for summarization
 """
 MLAAS API Client for DogeAutoSub.
 Integrates with the internal Virtuos MLAAS platform for:
-  - Text Translation: POST /task/text/translation
-  - Text Summarization: POST /task/text/summary
+  - Text Translation: POST /proxy/anthropic/v1/messages (Claude Sonnet — cost-efficient)
+  - Text Summarization: POST /proxy/anthropic/v1/messages (Claude Opus — high quality)
 
 Auth: Bearer token (two modes — builtin API key or user-provided temporary token).
 """
@@ -20,8 +20,14 @@ from typing import Callable, List, Optional
 # ── API Configuration ───────────────────────────────────────────
 
 MLAAS_BASE_URL = "https://mlaas.virtuosgames.com"
-MLAAS_DEFAULT_MODEL = "gpt4o"
 MLAAS_APP_NAME = "DogeAutoSub"
+
+# Model tiers — use the cheapest model that does the job well
+ANTHROPIC_MODEL_TRANSLATION = "claude-sonnet-4-20250514"   # Fast, cheap, great at translation
+ANTHROPIC_MODEL_SUMMARIZATION = "claude-sonnet-4-20250514"  # Quality summarization
+
+# Batching config
+TRANSLATION_BATCH_SIZE = 10  # Segments per API call
 
 
 @dataclass
@@ -36,7 +42,7 @@ class MLAASConfig:
     """
     builtin_api_key: str = ""
     bearer_token: str = ""
-    model_name: str = MLAAS_DEFAULT_MODEL
+    model_name: str = ""  # Kept for config compat, not used directly
     base_url: str = MLAAS_BASE_URL
 
     @property
@@ -73,14 +79,6 @@ class MLAASConfig:
 
 
 # ── API Calls ───────────────────────────────────────────────────
-
-def _extract_content(text: str) -> str:
-    """Extract text from <content>...</content> tags if present."""
-    match = re.search(r"<content>\s*(.*?)\s*</content>", text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return text.strip()
-
 
 def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: int = 120) -> dict:
     """Make a POST request to MLAAS API."""
@@ -126,6 +124,14 @@ def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: i
         raise RuntimeError(f"Cannot connect to MLAAS API: {e.reason}")
 
 
+def _parse_anthropic_response(result: dict) -> str:
+    """Extract text from Anthropic API response."""
+    content = result.get("content", [])
+    if isinstance(content, list) and len(content) > 0:
+        return content[0].get("text", "").strip()
+    return result.get("text", "").strip()
+
+
 # ── Translation ─────────────────────────────────────────────────
 
 # Language name mapping for the MLAAS API
@@ -146,32 +152,21 @@ def translate_text_mlaas(
     config: MLAASConfig,
 ) -> str:
     """
-    Translate text using Claude via MLAAS Anthropic proxy.
-    Includes instructions to fix transcription errors before translating.
-    
-    Args:
-        text: Text to translate (may contain transcription errors)
-        target_language: Language code (e.g. 'vi', 'en') or full name ('vietnamese')
-        config: MLAAS API configuration
-        
-    Returns:
-        Translated text string
+    Translate a single text string using Claude Sonnet via MLAAS.
+    Used by the file translation tab for individual lines.
     """
     target_lang_name = MLAAS_LANGUAGE_MAP.get(target_language.lower(), target_language.lower())
 
     payload = {
-        "model": ANTHROPIC_MODEL,
+        "model": ANTHROPIC_MODEL_TRANSLATION,
         "max_tokens": 1024,
         "messages": [
             {
                 "role": "user",
                 "content": (
-                    f"Translate the following text to {target_lang_name}. "
-                    "This text comes from automatic speech transcription and may contain errors "
-                    "such as mishearings, incomplete words, or wrong punctuation. "
-                    "First try to understand the intended meaning, correct any obvious transcription "
-                    "mistakes, then translate naturally. "
-                    "Return ONLY the translated text, nothing else.\n\n"
+                    f"Translate to {target_lang_name}. "
+                    "Fix any obvious speech-to-text errors before translating. "
+                    "Return ONLY the translation, nothing else.\n\n"
                     f"{text}"
                 ),
             },
@@ -179,12 +174,97 @@ def translate_text_mlaas(
     }
 
     result = _mlaas_request("/proxy/anthropic/v1/messages", payload, config, timeout=30)
+    return _parse_anthropic_response(result)
 
-    # Parse Anthropic response
-    content = result.get("content", [])
-    if isinstance(content, list) and len(content) > 0:
-        return content[0].get("text", "").strip()
-    return result.get("text", text)
+
+def _translate_batch_mlaas(
+    texts: List[str],
+    target_language: str,
+    config: MLAASConfig,
+) -> List[str]:
+    """
+    Translate a batch of numbered texts in a single API call.
+    
+    Sends texts as a numbered list, asks Claude to return translations
+    in the same numbered format, then parses them back out.
+    
+    Args:
+        texts: List of text strings to translate (max ~10 recommended)
+        target_language: Target language code or name
+        config: MLAAS API config
+        
+    Returns:
+        List of translated strings (same length as input)
+    """
+    target_lang_name = MLAAS_LANGUAGE_MAP.get(target_language.lower(), target_language.lower())
+    
+    # Build numbered input
+    numbered = "\n".join(f"[{i+1}] {t}" for i, t in enumerate(texts))
+    
+    payload = {
+        "model": ANTHROPIC_MODEL_TRANSLATION,
+        "max_tokens": 2048,
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    f"Translate each numbered line to {target_lang_name}. "
+                    "These are subtitle lines from speech-to-text — fix obvious transcription errors. "
+                    "Return ONLY the translations in the same [N] format, one per line.\n\n"
+                    f"{numbered}"
+                ),
+            },
+        ],
+    }
+
+    result = _mlaas_request("/proxy/anthropic/v1/messages", payload, config, timeout=60)
+    response_text = _parse_anthropic_response(result)
+    
+    # Parse numbered response back into list
+    translations = _parse_numbered_response(response_text, len(texts))
+    
+    # If parsing failed or count mismatch, fall back to returning what we got
+    if len(translations) != len(texts):
+        print(f"Warning: Expected {len(texts)} translations, got {len(translations)}. Padding with originals.")
+        while len(translations) < len(texts):
+            translations.append(texts[len(translations)])
+    
+    return translations
+
+
+def _parse_numbered_response(response: str, expected_count: int) -> List[str]:
+    """
+    Parse a numbered response like:
+      [1] translated text one
+      [2] translated text two
+    
+    Returns list of translated texts.
+    """
+    results = {}
+    
+    # Try to match [N] patterns
+    pattern = re.compile(r"\[(\d+)\]\s*(.+?)(?=\n\[\d+\]|\Z)", re.DOTALL)
+    matches = pattern.findall(response)
+    
+    if matches:
+        for num_str, text in matches:
+            idx = int(num_str) - 1  # Convert to 0-based
+            if 0 <= idx < expected_count:
+                results[idx] = text.strip()
+    
+    # If regex didn't work well, try line-by-line splitting
+    if len(results) < expected_count:
+        lines = [l.strip() for l in response.strip().split("\n") if l.strip()]
+        for i, line in enumerate(lines):
+            if i >= expected_count:
+                break
+            # Strip leading [N] if present
+            cleaned = re.sub(r"^\[\d+\]\s*", "", line).strip()
+            if cleaned and i not in results:
+                results[i] = cleaned
+    
+    # Build ordered list
+    return [results.get(i, "") for i in range(max(len(results), 0))]
 
 
 def translate_segments_mlaas(
@@ -192,50 +272,79 @@ def translate_segments_mlaas(
     target_language: str,
     config: MLAASConfig,
     progress_callback: Optional[Callable[[int], None]] = None,
-    batch_size: int = 5,
+    batch_size: int = TRANSLATION_BATCH_SIZE,
 ) -> list:
     """
-    Translate subtitle segments using MLAAS translation API.
-    Sends segments individually for accurate per-segment translation.
+    Translate subtitle segments using batched MLAAS calls.
+    
+    Batches segments (default 10 per call) to reduce API costs and latency.
+    For a 174-segment video, this makes ~18 calls instead of 174.
     
     Args:
         segments: List of dicts with 'start', 'end', 'text' keys
         target_language: Target language code
         config: MLAAS API configuration
         progress_callback: Optional callback with progress percentage (0-100)
-        batch_size: Not used for API calls, kept for interface compatibility
+        batch_size: Number of segments per API call (default: 10)
         
     Returns:
         List of translated segment dicts
     """
-    translated = []
     total = len(segments)
-
-    for i, seg in enumerate(segments):
-        text = seg.get("text", "").strip()
-        if not text:
-            translated.append(seg)
-        else:
+    if total == 0:
+        return []
+    
+    translated = []
+    batch_count = (total + batch_size - 1) // batch_size
+    
+    print(f"Translating {total} segments in {batch_count} batched API calls (batch_size={batch_size})")
+    
+    for batch_idx in range(batch_count):
+        start = batch_idx * batch_size
+        end = min(start + batch_size, total)
+        batch_segs = segments[start:end]
+        
+        # Collect non-empty texts for translation
+        texts = []
+        text_indices = []  # Track which segments have text
+        
+        for i, seg in enumerate(batch_segs):
+            text = seg.get("text", "").strip()
+            if text:
+                texts.append(text)
+                text_indices.append(i)
+        
+        # Translate the batch
+        translations = []
+        if texts:
             try:
-                result = translate_text_mlaas(text, target_language, config)
+                translations = _translate_batch_mlaas(texts, target_language, config)
+            except Exception as e:
+                print(f"MLAAS batch translate error (batch {batch_idx + 1}): {e}")
+                translations = texts  # Fall back to originals
+        
+        # Rebuild segments with translations
+        trans_idx = 0
+        for i, seg in enumerate(batch_segs):
+            if i in text_indices and trans_idx < len(translations):
                 translated.append({
                     "start": seg["start"],
                     "end": seg["end"],
-                    "text": result,
+                    "text": translations[trans_idx],
                 })
-            except Exception as e:
-                print(f"MLAAS translate error for segment {i}: {e}")
-                translated.append(seg)  # Keep original on error
-
+                trans_idx += 1
+            else:
+                translated.append(seg)
+        
+        # Report progress
         if progress_callback and total > 0:
-            progress_callback(int(((i + 1) / total) * 100))
-
+            progress_callback(int((end / total) * 100))
+    
     return translated
 
 
 # ── Summarization (via Anthropic-compatible proxy) ──────────────
 
-ANTHROPIC_MODEL = "claude-opus-4-6"
 MEETING_NOTES_SYSTEM_PROMPT = (
     "You are a professional meeting note-taker. Given a meeting transcript with speaker names "
     "and dialogue, produce structured call notes in the following exact format:\n\n"
@@ -258,9 +367,9 @@ def summarize_text_mlaas(
     progress_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
-    Summarize text using the MLAAS Anthropic-compatible proxy (Claude).
+    Summarize text using Claude via MLAAS Anthropic proxy.
     
-    Endpoint: POST /proxy/anthropic/v1/messages
+    Uses Sonnet for cost efficiency — still produces high-quality meeting notes.
     
     Args:
         text: Text to summarize (meeting transcript)
@@ -277,7 +386,7 @@ def summarize_text_mlaas(
     lang_hint = f"\n\nPlease write the summary in {language}." if language else ""
 
     payload = {
-        "model": ANTHROPIC_MODEL,
+        "model": ANTHROPIC_MODEL_SUMMARIZATION,
         "max_tokens": 4096,
         "messages": [
             {
@@ -295,11 +404,4 @@ def summarize_text_mlaas(
     if progress_callback:
         progress_callback("Summary received from Claude ✓")
 
-    # Parse Anthropic response format: { content: [{ text: "...", type: "text" }] }
-    content = result.get("content", [])
-    if isinstance(content, list) and len(content) > 0:
-        return content[0].get("text", "")
-    
-    # Fallback: try plain text field
-    return result.get("text", str(result))
-
+    return _parse_anthropic_response(result)

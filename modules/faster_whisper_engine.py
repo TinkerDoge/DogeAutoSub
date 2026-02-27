@@ -467,26 +467,3 @@ class FasterWhisperRecognizer:
         except Exception as e:
             print(f"Error during translation: {e}")
             return []
-
-
-# Fallback to standard Whisper if faster-whisper not available
-def get_recognizer(
-    model_size: str = "turbo",
-    language: Optional[str] = None,
-    prefer_faster: bool = True,
-) -> "FasterWhisperRecognizer":
-    """
-    Factory function to get the appropriate recognizer.
-    
-    Tries faster-whisper first if available and preferred,
-    falls back to standard Whisper otherwise.
-    """
-    if FASTER_WHISPER_AVAILABLE and prefer_faster:
-        return FasterWhisperRecognizer(model_size=model_size, language=language)
-    else:
-        # Import and return legacy recognizer
-        # This maintains backward compatibility
-        raise ImportError(
-            "faster-whisper not available and no fallback configured. "
-            "Install with: pip install faster-whisper"
-        )

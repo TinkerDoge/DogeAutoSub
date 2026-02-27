@@ -24,8 +24,6 @@ if getattr(sys, 'frozen', False):
 import re
 import subprocess
 import time
-import wave
-import contextlib
 
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QMainWindow, QMessageBox,
@@ -84,54 +82,6 @@ def _lang_code(name: str, default: str = "auto") -> str:
             return code
     return name.lower()
 
-
-def extract_audio(source_path: str, volume: int = 3) -> str:
-    """Extract audio from a media file and save as WAV in temp dir."""
-    os.makedirs(TEMP_DIR, exist_ok=True)
-    output_path = os.path.join(TEMP_DIR, "extracted_audio.wav")
-    command = [
-        FFMPEG_PATH, "-hide_banner", "-loglevel", "warning", "-y",
-        "-i", source_path,
-        "-ac", "1", "-ar", "16000",
-        "-filter:a", f"volume={volume}",
-        "-vn", "-f", "wav", output_path,
-    ]
-    print(f"Extracting audio: {' '.join(command)}")
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg failed: {result.stderr}")
-    return output_path
-
-
-def get_audio_duration(file_path: str) -> float:
-    """Get audio/video duration in seconds."""
-    try:
-        if not os.path.exists(file_path):
-            return 0.0
-        # Fast path for WAV
-        if file_path.lower().endswith('.wav'):
-            with contextlib.closing(wave.open(file_path, 'rb')) as wf:
-                frames = wf.getnframes()
-                rate = wf.getframerate()
-                return frames / float(rate) if rate > 0 else 0.0
-        # Try ffprobe
-        ffprobe = os.path.join(os.path.dirname(FFMPEG_PATH), 'ffprobe.exe')
-        if os.path.exists(ffprobe):
-            cmd = [ffprobe, '-v', 'error', '-show_entries', 'format=duration',
-                   '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
-            res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return float(res.stdout.strip())
-        # Fallback: parse ffmpeg -i
-        cmd = [FFMPEG_PATH, '-i', file_path, '-hide_banner']
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        info = res.stderr or res.stdout
-        m = re.search(r"Duration: (\d\d):(\d\d):(\d\d)\.(\d+)", info)
-        if m:
-            h, mn, s, ms = m.groups()
-            return int(h) * 3600 + int(mn) * 60 + int(s) + float(f"0.{ms}")
-    except Exception as e:
-        print(f"Error getting duration: {e}")
-    return 0.0
 
 
 def format_timestamp(seconds: float) -> str:
@@ -364,10 +314,13 @@ class SubtitleThread(QThread):
                                 for i, s in enumerate(segs)
                             ]
                     elif engine == "whisper" and hasattr(recognizer, 'translate'):
-                        audio_path = os.path.join(TEMP_DIR, "extracted_audio.wav")
-                        if not os.path.exists(audio_path):
-                            extract_audio(self.args.source_path, self.args.volume)
-                        translated_segments = recognizer.translate(audio_path, dst_code) or []
+                        # Use the audio already extracted by ChunkProcessor
+                        audio_path = os.path.join(TEMP_DIR, "chunks", "full_audio.wav")
+                        if os.path.exists(audio_path):
+                            translated_segments = recognizer.translate(audio_path, dst_code) or []
+                        else:
+                            print("Warning: No extracted audio found for whisper translate")
+                            translated_segments = None
                     else:
                         # Default: Google Translate
                         translated_segments = translate_segments_google(segs, actual_src, dst_code)

@@ -86,8 +86,8 @@ class ChunkProcessor:
     
     Processing flow:
     1. Probe total duration with ffprobe
-    2. For faster-whisper: Use single-pass processing with native VAD
-    3. For legacy whisper: Create chunk schedule with VAD-aware boundaries
+    2. Single-pass mode (default): Process entire file with native VAD
+    3. Chunked mode (optional): Split into chunks for very long files
     4. Extract chunks in parallel (I/O bound)
     5. Transcribe chunks sequentially (GPU bound)
     6. Merge all segments with corrected timestamps
@@ -113,8 +113,8 @@ class ChunkProcessor:
             temp_dir: Directory for temporary chunk files
             ffmpeg_path: Path to ffmpeg executable
             volume_boost: Audio volume boost factor
-            use_chunking: If False, process entire file at once (recommended for faster-whisper)
-                         If True, split into chunks (for legacy whisper or very long files)
+            use_chunking: If False, process entire file at once (default, recommended)
+                         If True, split into chunks (for very long files)
         """
         self.chunk_duration = chunk_duration
         self.overlap = overlap
@@ -335,7 +335,7 @@ class ChunkProcessor:
             
             return segments, language
         
-        # Legacy chunking mode (for very long files or legacy whisper)
+        # Chunked mode (for very long files)
         print("Chunked mode - splitting audio for parallel processing")
         
         # Create chunk schedule
