@@ -1,7 +1,7 @@
 {
-  "version": "2.0.4",
-  "filename": "DogeAutoSub_v2.0.4.zip",
-  "notes": "Fix Get Token button layout, optimize engine and processor modules",
+  "version": "2.0.5",
+  "filename": "DogeAutoSub_v2.0.5.zip",
+  "notes": "v2.0.5 test - updated comments on engine, processor, and client modules",
   "files": {
     "AutoUI.py": "0dcabfd5527310e2f2aed3cb82e8831cbb8a27d4abc4e465c1b42355eebc2a25",
     "ui_DogeAutoSub.py": "fedf9441094d5b18eceda121493a21e9ae6eee426f5b511994f88a09b2b37e16",
@@ -14,15 +14,15 @@
     "icons/Logo.png": "0af2b462622eccb619b7716fd938bd99dcdbe9af960bbc1e1ce63aa54bca531d",
     "icons/paint.png": "397404be507d2747e7931b8c6eafffd86d8f2e72e49b4ca2667bb7c16e7ec7ab",
     "icons/start.gif": "92d1dc30cec47a6ce09b98a1ac42c16066b196166fbbed500db3f0369e3cd7b4",
-    "modules/chunk_processor.py": "5035cb2a670ff750c6f9feca0431c18de7fe554011bdb7dc5af9bbd1792b04c9",
+    "modules/chunk_processor.py": "c58699863cdd6b0f027d65056c0c5b77a68e28f93d4ec536d7851dfa4986ffe4",
     "modules/constants.py": "e1b373d0b793570abae92439ef564b339a17667575d338a52988bbd6e5ccc699",
-    "modules/faster_whisper_engine.py": "f72805e2ce488356f60fb51f971ae698b52dfd2f0e9a3d030ec54922fa06675d",
+    "modules/faster_whisper_engine.py": "bbf0ba5bb0d1b707cdbd9ec41fe9d17f2a2796f8040d1d6f811806379b5400ad",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
     "modules/meeting_notes.py": "772bd62d1ae69371943649ad0175b765c4c55a6a88a1e60b25604bc32fbd1691",
-    "modules/mlaas_client.py": "793ce7be5502e85289dca9c1f41af16f6500d3ddfa4594d76804df22c54df75d",
+    "modules/mlaas_client.py": "51205b39bb07c559eefb4fff98e819ee3553c6259b7688ccad44f5ce55da59fb",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
     "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
     "modules/subtitle_args.py": "2d035cf9452ae9dafd5636e620b60ad6a864a391e5e747a9f99f56085280cbcf",
-    "modules/updater.py": "f9377db214dace968d25d3aa8691390699022fc4847133031c940dad7b63d9a6"
+    "modules/updater.py": "5101d514d7901d3bf4aa085a80667aed0802ddd1f994c90d9bf3ef10ef228606"
   }
 }

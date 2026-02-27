@@ -22,7 +22,7 @@ if not exist modules\temp mkdir modules\temp
 REM Build the application
 echo [3/4] Building application...
 echo.
-pyinstaller DogeAutoSubApp.spec --clean --noconfirm
+python -m PyInstaller DogeAutoSubApp.spec --noconfirm
 
 REM Verify build
 echo.

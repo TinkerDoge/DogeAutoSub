@@ -1,4 +1,4 @@
-# v2.0.4 - Improved chunk deduplication and ETA calculation
+# v2.0.5 - Improved chunk deduplication and ETA calculation
 """
 Chunk-based parallel audio processing for DogeAutoSub.
 Enables parallel extraction and transcription for accurate progress tracking.

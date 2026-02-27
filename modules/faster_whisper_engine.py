@@ -1,4 +1,4 @@
-# v2.0.4 - Optimized batched inference and VAD parameters
+# v2.0.5 - Optimized batched inference and VAD parameters
 """
 Faster-Whisper transcription engine for DogeAutoSub.
 Uses CTranslate2 for GPU-accelerated transcription with 4x+ speed improvement.
