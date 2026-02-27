@@ -6,7 +6,7 @@ PySide6>=6.4.0
 
 # Audio/Video Processing - faster-whisper for GPU-accelerated transcription
 faster-whisper>=1.0.0
-torch>=2.0.0
+torch>=2.0.0+cu126
 numpy>=1.24.0
 
 # Translation Engines

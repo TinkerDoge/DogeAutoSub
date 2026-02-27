@@ -7,9 +7,22 @@ Pipeline:  Select Video → Extract Audio → Transcribe → Translate → Save 
 """
 
 import os
+import sys
+
+# ── Ensure updatable modules load from disk, not PYZ archive ────
+# PyInstaller compiles modules into a PYZ archive. To allow the
+# auto-updater to replace .py files on disk and have them take
+# effect, we must ensure _internal/ is searched FIRST.
+if getattr(sys, 'frozen', False):
+    _internal = os.path.join(os.path.dirname(sys.executable), '_internal')
+    if os.path.isdir(_internal) and _internal not in sys.path:
+        sys.path.insert(0, _internal)
+    # Invalidate any cached module finders so Python re-scans
+    import importlib
+    importlib.invalidate_caches()
+
 import re
 import subprocess
-import sys
 import time
 import wave
 import contextlib

@@ -1,3 +1,4 @@
+# v2.0.3 - Added better error handling for token expiration
 """
 MLAAS API Client for DogeAutoSub.
 Integrates with the internal Virtuos MLAAS platform for:

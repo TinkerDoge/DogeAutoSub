@@ -34,18 +34,11 @@ hiddenimports = [
     'filelock', 'fsspec', 'tqdm',
     'huggingface_hub',
 
-    # Application modules
-    'ui_DogeAutoSub',
-    'modules.constants',
-    'modules.subtitle_args',
-    'modules.faster_whisper_engine',
-    'modules.chunk_processor',
-    'modules.transcribe',
-    'modules.audio',
-    'modules.marian_translator',
-    'modules.meeting_notes',
-    'modules.mlaas_client',
-    'modules.updater',
+    # NOTE: Application modules (ui_DogeAutoSub, modules.*) are intentionally
+    # NOT listed here. They are included only as 'datas' (source .py files)
+    # so that the auto-updater can replace them on disk and have the changes
+    # take effect after restart. If they were in hiddenimports, PyInstaller
+    # would compile them into the PYZ archive, making them un-updatable.
 ]
 
 # ── Data files ──────────────────────────────────────────────────
@@ -64,9 +57,7 @@ datas = [
     ('modules/marian_translator.py', 'modules'),
     ('modules/meeting_notes.py', 'modules'),
     ('modules/mlaas_client.py', 'modules'),
-    ('modules/transcribe.py', 'modules'),
     ('modules/updater.py', 'modules'),
-    ('modules/audio.py', 'modules'),
     ('modules/styleSheetDark.css', 'modules'),
     ('modules/styleSheetLight.css', 'modules'),
 
