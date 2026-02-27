@@ -111,6 +111,21 @@ a = Analysis(
     noarchive=False,
 )
 
+# ── Strip app modules from PYZ so they load from disk ───────────
+# PyInstaller traces imports and compiles them into a.pure (PYZ archive).
+# The PYZ FrozenImporter always takes priority over disk files, which
+# prevents the auto-updater from replacing modules at runtime.
+# By removing app modules from a.pure, they only exist as data files
+# in _internal/ and Python loads them from disk via sys.path.
+updatable_modules = {
+    'AutoUI', 'ui_DogeAutoSub',
+    'modules', 'modules.constants', 'modules.subtitle_args',
+    'modules.faster_whisper_engine', 'modules.chunk_processor',
+    'modules.marian_translator', 'modules.meeting_notes',
+    'modules.mlaas_client', 'modules.updater',
+}
+a.pure = [entry for entry in a.pure if entry[0] not in updatable_modules]
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 # ── Executable ──────────────────────────────────────────────────
