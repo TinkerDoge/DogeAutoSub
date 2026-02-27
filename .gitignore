@@ -9,5 +9,4 @@ DogeAutoSub.bat
 build/
 dist/
 modules/downloadModel.py
-release_1.02.zip
-Stable1.02.zip
+*.zip
