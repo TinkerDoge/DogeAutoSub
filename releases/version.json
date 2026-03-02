@@ -1,10 +1,10 @@
 {
-  "version": "2.1.1",
-  "filename": "DogeAutoSub_v2.1.1.zip",
-  "notes": "v2.1.1 - Batched translation (10 segments/call), switched to Claude Sonnet for ~90% cost reduction",
+  "version": "2.1.2",
+  "filename": "DogeAutoSub_v2.1.2.zip",
+  "notes": "v2.1.2 - Permanent API key from .env, x-api-key auth, removed temporary token input",
   "files": {
-    "AutoUI.py": "f786fd2a042daedfb200864f8d0b33669625de703e83b756ceaff6f21a61fb16",
-    "ui_DogeAutoSub.py": "fedf9441094d5b18eceda121493a21e9ae6eee426f5b511994f88a09b2b37e16",
+    "AutoUI.py": "6ea535bdf6395f0c3bf6a77a07611ec66b8215b16d289b18d94cfb511cb84fd7",
+    "ui_DogeAutoSub.py": "e7364d3ffea5376bc742598ebbbc9f557c46a90840d4f1b74817b0b252f9e5be",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
     "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
     "icons/drop-down-menu.png": "e4316d74c055d5fb52c940acec5b7a95066a5cce8ea85dc5935c65a8a07a16f4",
@@ -19,10 +19,10 @@
     "modules/faster_whisper_engine.py": "f5b48f836df05406309fd0212114e9fe4bd917b8f3f6be323fb9ae20e80f660d",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
     "modules/meeting_notes.py": "772bd62d1ae69371943649ad0175b765c4c55a6a88a1e60b25604bc32fbd1691",
-    "modules/mlaas_client.py": "73d66f2663d9a5021c14921d3b9cb83948f9242662a2d3c6058d9ddc39a41f0d",
+    "modules/mlaas_client.py": "18c2eccebb947bece58fb9f2c217703b2400ed703aa07c5b26d4640bbc6fdf32",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
     "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
-    "modules/subtitle_args.py": "2d035cf9452ae9dafd5636e620b60ad6a864a391e5e747a9f99f56085280cbcf",
-    "modules/updater.py": "53abaeccdadbaee8a82fbe2c6452cb7dd23e25e7dc2e54e236241c8bc425dd1e"
+    "modules/subtitle_args.py": "20de6bac785c1bfd30e106d8c2d594b25a1e13b15f91c3852a0610089794ac7c",
+    "modules/updater.py": "5c372eeb062aa5bd78f2fa28796b2d15ebb5c751238e488f782e0b55d45a42d2"
   }
 }

@@ -34,7 +34,7 @@ from PySide6.QtCore import QThread, QUrl, Qt, Signal
 import ui_DogeAutoSub
 from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES
 from modules.subtitle_args import SubtitleArgs
-from modules.mlaas_client import MLAASConfig, translate_segments_mlaas, summarize_text_mlaas
+from modules.mlaas_client import MLAASConfig, translate_segments_mlaas, summarize_text_mlaas, get_masked_key
 from modules.updater import APP_VERSION, check_for_update, download_and_apply_update, restart_app
 
 # ── CUDA Setup ──────────────────────────────────────────────────
@@ -293,9 +293,9 @@ class SubtitleThread(QThread):
                 translated_segments = None
                 
                 try:
-                    if engine == "mlaas" and self.args.mlaas_token:
+                    if engine == "mlaas":
                         self.status_update.emit(f"Translating via MLAAS API ({actual_src} → {dst_code})…")
-                        mlaas_config = MLAASConfig(bearer_token=self.args.mlaas_token)
+                        mlaas_config = MLAASConfig.from_env()
                         translated_segments = translate_segments_mlaas(
                             segs, dst_code, mlaas_config,
                             progress_callback=lambda p: self.progress_update.emit(86 + int(p * 0.13)),
@@ -373,10 +373,10 @@ class MeetingNotesThread(QThread):
     error = Signal(str)      # error message
     status_update = Signal(str)
     
-    def __init__(self, docx_path: str, mlaas_token: str):
+    def __init__(self, docx_path: str, api_key: str):
         super().__init__()
         self.docx_path = docx_path
-        self.mlaas_token = mlaas_token
+        self.api_key = api_key
     
     def run(self):
         try:
@@ -394,12 +394,8 @@ class MeetingNotesThread(QThread):
             self.status_update.emit(f"Found {len(blocks)} speaker blocks. Formatting…")
             transcript = format_transcript_for_llm(blocks)
             
-            if not self.mlaas_token:
-                self.error.emit("No MLAAS Bearer token provided. Enter it in the Subtitles tab.")
-                return
-            
             self.status_update.emit("Sending to MLAAS for summarization…")
-            config = MLAASConfig(bearer_token=self.mlaas_token)
+            config = MLAASConfig(api_key=self.api_key)
             result = summarize_text_mlaas(
                 transcript, config,
                 progress_callback=lambda msg: self.status_update.emit(msg),
@@ -441,7 +437,7 @@ def _read_file_content(filepath: str) -> str:
 
 def _translate_srt_content(
     srt_text: str, src_lang: str, dst_lang: str, engine: str,
-    mlaas_token: str, progress_cb=None,
+    api_key: str, progress_cb=None,
 ) -> str:
     """Translate SRT content preserving timestamps and structure."""
     import re as _re
@@ -454,7 +450,7 @@ def _translate_srt_content(
         if len(lines) >= 3:
             # lines[0] = index, lines[1] = timestamp, lines[2:] = text
             text_lines = "\n".join(lines[2:])
-            translated = _translate_single(text_lines, src_lang, dst_lang, engine, mlaas_token)
+            translated = _translate_single(text_lines, src_lang, dst_lang, engine, api_key)
             translated_blocks.append(f"{lines[0]}\n{lines[1]}\n{translated}")
         else:
             translated_blocks.append(block)
@@ -467,7 +463,7 @@ def _translate_srt_content(
 
 def _translate_plain_content(
     text: str, src_lang: str, dst_lang: str, engine: str,
-    mlaas_token: str, progress_cb=None,
+    api_key: str, progress_cb=None,
 ) -> str:
     """Translate plain text content line by line."""
     lines = [l for l in text.split("\n") if l.strip()]
@@ -475,7 +471,7 @@ def _translate_plain_content(
     total = len(lines)
     
     for i, line in enumerate(lines):
-        translated = _translate_single(line.strip(), src_lang, dst_lang, engine, mlaas_token)
+        translated = _translate_single(line.strip(), src_lang, dst_lang, engine, api_key)
         translated_lines.append(translated)
         
         if progress_cb and total > 0:
@@ -484,14 +480,14 @@ def _translate_plain_content(
     return "\n".join(translated_lines)
 
 
-def _translate_single(text: str, src: str, dst: str, engine: str, mlaas_token: str) -> str:
+def _translate_single(text: str, src: str, dst: str, engine: str, api_key: str) -> str:
     """Translate a single text string using the selected engine."""
     if not text.strip():
         return text
     
     if engine == "mlaas":
         from modules.mlaas_client import translate_text_mlaas, MLAASConfig
-        config = MLAASConfig(bearer_token=mlaas_token)
+        config = MLAASConfig(api_key=api_key)
         return translate_text_mlaas(text, dst, config)
     elif engine == "marian" and MARIAN_AVAILABLE:
         translator = MarianTranslator(src, dst)
@@ -515,13 +511,13 @@ class TranslateFileThread(QThread):
     progress_update = Signal(int)
     
     def __init__(self, filepath: str, src_lang: str, dst_lang: str,
-                 engine: str, mlaas_token: str):
+                 engine: str, api_key: str):
         super().__init__()
         self.filepath = filepath
         self.src_lang = src_lang
         self.dst_lang = dst_lang
         self.engine = engine
-        self.mlaas_token = mlaas_token
+        self.api_key = api_key
     
     def run(self):
         try:
@@ -543,12 +539,12 @@ class TranslateFileThread(QThread):
             if ext == ".srt":
                 result = _translate_srt_content(
                     content, self.src_lang, self.dst_lang,
-                    self.engine, self.mlaas_token, on_progress,
+                    self.engine, self.api_key, on_progress,
                 )
             else:
                 result = _translate_plain_content(
                     content, self.src_lang, self.dst_lang,
-                    self.engine, self.mlaas_token, on_progress,
+                    self.engine, self.api_key, on_progress,
                 )
             
             self.finished.emit(result)
@@ -615,9 +611,6 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.model_size_dropdown.currentTextChanged.connect(self._on_model_changed)
         self.themeBtn.clicked.connect(self._toggle_theme)
         self.openFolderBtn.clicked.connect(self._open_output_folder)
-        self.getTokenBtn.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://mlaas.virtuosgames.com/auth/token"))
-        )
         
         # Meeting notes signals
         self.selectDocxBtn.clicked.connect(self._select_docx)
@@ -629,8 +622,15 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.translateFileBtn.clicked.connect(self._start_file_translation)
         self.saveTransBtn.clicked.connect(self._save_translation)
         
-        # ── Load saved MLAAS config ──────────────────────────
-        self._load_mlaas_config()
+        # ── Load MLAAS API key from .env ─────────────────────
+        self.mlaas_config = MLAASConfig.from_env()
+        masked = get_masked_key(self.mlaas_config.api_key)
+        if self.mlaas_config.is_configured():
+            self.mlaasStatusLabel.setText(f"✅ {masked}")
+            self.mlaasStatusLabel.setStyleSheet("color: #4CAF50;")
+        else:
+            self.mlaasStatusLabel.setText("❌ No API key — add MLAAS_API to .env")
+            self.mlaasStatusLabel.setStyleSheet("color: #f44336;")
         
         # ── Set window title with version ───────────────────
         self.setWindowTitle(f"DogeAutoSub v{APP_VERSION}")
@@ -757,7 +757,6 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             model_size=self.model_size_dropdown.currentText(),
             translate_engine=self.target_engine.currentText(),
             volume=self.boostSlider.value(),
-            mlaas_token=self.mlaasTokenInput.text().strip(),
         )
         
         self.subtitle_thread = SubtitleThread(args)
@@ -806,16 +805,15 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if self.notes_thread and self.notes_thread.isRunning():
             return
         
-        mlaas_token = self.mlaasTokenInput.text().strip()
-        if not mlaas_token:
-            QMessageBox.warning(self, "No Token", "Please enter your MLAAS Bearer token in the Subtitles tab.")
+        if not self.mlaas_config.is_configured():
+            QMessageBox.warning(self, "No API Key", "MLAAS API key not found. Add MLAAS_API to your .env file.")
             return
         
         self.generateNotesBtn.setEnabled(False)
         self.generateNotesBtn.setText("⏳  Generating…")
         self.notesOutput.clear()
         
-        self.notes_thread = MeetingNotesThread(self.docx_path, mlaas_token)
+        self.notes_thread = MeetingNotesThread(self.docx_path, self.mlaas_config.api_key)
         self.notes_thread.finished.connect(self._on_notes_finished)
         self.notes_thread.error.connect(self._on_notes_error)
         self.notes_thread.status_update.connect(self.notesStatusLabel.setText)
@@ -879,10 +877,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         src = self._get_lang_code(self.trans_src_lang.currentText())
         dst = self._get_lang_code(self.trans_tgt_lang.currentText())
         engine = self.trans_engine.currentText()
-        mlaas_token = self.mlaasTokenInput.text().strip()
         
-        if engine == "mlaas" and not mlaas_token:
-            QMessageBox.warning(self, "No Token", "MLAAS engine requires a Bearer token. Enter it in the Subtitles tab.")
+        if engine == "mlaas" and not self.mlaas_config.is_configured():
+            QMessageBox.warning(self, "No API Key", "MLAAS API key not found. Add MLAAS_API to your .env file.")
             return
         
         self.translateFileBtn.setEnabled(False)
@@ -891,7 +888,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.transStatusLabel.setText("Starting…")
         
         self.translate_thread = TranslateFileThread(
-            self.trans_file_path, src, dst, engine, mlaas_token,
+            self.trans_file_path, src, dst, engine, self.mlaas_config.api_key,
         )
         self.translate_thread.finished.connect(self._on_trans_finished)
         self.translate_thread.error.connect(self._on_trans_error)
@@ -932,24 +929,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 f.write(text)
             self.transStatusLabel.setText(f"Saved to {os.path.basename(path)}")
     
-    # ── MLAAS Config Persistence ─────────────────────────────────
-    
-    def _mlaas_config_path(self) -> str:
-        return os.path.join(SCRIPT_DIR, "modules", "mlaas_config.json")
-    
-    def _save_mlaas_config(self):
-        try:
-            config = MLAASConfig(bearer_token="")  # Don't persist temp token
-            config.save_to_file(self._mlaas_config_path())
-        except Exception as e:
-            print(f"Failed to save MLAAS config: {e}")
-    
-    def _load_mlaas_config(self):
-        try:
-            config = MLAASConfig.load_from_file(self._mlaas_config_path())
-            # builtin_api_key loaded if it exists
-        except Exception:
-            pass
+
     
     # ── Auto-Update ─────────────────────────────────────────────
     

@@ -16,4 +16,3 @@ class SubtitleArgs:
     model_size: str = "turbo"
     translate_engine: str = "google"
     volume: int = 3
-    mlaas_token: str = ""

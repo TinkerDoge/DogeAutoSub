@@ -1,6 +1,7 @@
 modules/__pycache__
 models/
 __pycache__
+.env
 modules/temp/extracted_audio.wav
 venv/
 DogeAutoSub.zip

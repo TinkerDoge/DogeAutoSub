@@ -207,37 +207,24 @@ class Ui_MainWindow(object):
 
         settingsLayout.addLayout(engineVolGrid)
 
-        # ── MLAAS Auth Card (inside settings) ───────────────────
+        # ── MLAAS API Status (inside settings) ────────────────────
         mlaasFrame = QFrame()
         mlaasFrame.setObjectName("fileCard")
         mlaasFrame.setFrameShape(QFrame.Shape.StyledPanel)
-        mlaasLayout = QVBoxLayout(mlaasFrame)
+        mlaasLayout = QHBoxLayout(mlaasFrame)
         mlaasLayout.setContentsMargins(8, 6, 8, 6)
-        mlaasLayout.setSpacing(6)
+        mlaasLayout.setSpacing(8)
 
-        mlaasTitleRow = QHBoxLayout()
-        mlaasTitle = QLabel("🔑 MLAAS API Token")
+        mlaasTitle = QLabel("🔑 MLAAS API")
         mlaasTitle.setFont(self.font_title)
         mlaasTitle.setObjectName("sectionTitle")
-        mlaasTitleRow.addWidget(mlaasTitle)
-        mlaasTitleRow.addStretch()
+        mlaasLayout.addWidget(mlaasTitle)
 
-        self.getTokenBtn = QPushButton("🔗 Get Token")
-        self.getTokenBtn.setObjectName("getTokenBtn")
-        self.getTokenBtn.setToolTip("Open https://mlaas.virtuosgames.com/auth/token in browser")
-        self.getTokenBtn.setFont(self.font_small)
-        self.getTokenBtn.setFixedHeight(22)
-        mlaasTitleRow.addWidget(self.getTokenBtn)
-        mlaasLayout.addLayout(mlaasTitleRow)
-
-        self.mlaasTokenInput = QLineEdit()
-        self.mlaasTokenInput.setObjectName("mlaasTokenInput")
-        self.mlaasTokenInput.setPlaceholderText("Paste Bearer token here (expires ~2h)…")
-        self.mlaasTokenInput.setEchoMode(QLineEdit.EchoMode.Password)
-        self.mlaasTokenInput.setFont(self.font_body)
-        self.mlaasTokenInput.setFixedWidth(300)
-        self.mlaasTokenInput.setMinimumHeight(32)
-        mlaasLayout.addWidget(self.mlaasTokenInput)
+        self.mlaasStatusLabel = QLabel("Loading…")
+        self.mlaasStatusLabel.setFont(self.font_body)
+        self.mlaasStatusLabel.setStyleSheet("color: #888;")
+        mlaasLayout.addWidget(self.mlaasStatusLabel)
+        mlaasLayout.addStretch()
 
         settingsLayout.addWidget(mlaasFrame)
 
