@@ -46,8 +46,8 @@ datas = [
     # Icons and assets
     ('icons', 'icons'),
 
-    # Python source files needed at runtime
-    ('ui_DogeAutoSub.py', '.'),
+    # Modules (all app code lives here)
+    ('modules/ui_DogeAutoSub.py', 'modules'),
 
     # Modules
     ('modules/constants.py', 'modules'),
@@ -58,6 +58,9 @@ datas = [
     ('modules/meeting_notes.py', 'modules'),
     ('modules/mlaas_client.py', 'modules'),
     ('modules/updater.py', 'modules'),
+    ('modules/subtitle_thread.py', 'modules'),
+    ('modules/meeting_notes_thread.py', 'modules'),
+    ('modules/translate_thread.py', 'modules'),
     ('modules/styleSheetDark.css', 'modules'),
     ('modules/styleSheetLight.css', 'modules'),
 
@@ -118,11 +121,12 @@ a = Analysis(
 # By removing app modules from a.pure, they only exist as data files
 # in _internal/ and Python loads them from disk via sys.path.
 updatable_modules = {
-    'AutoUI', 'ui_DogeAutoSub',
-    'modules', 'modules.constants', 'modules.subtitle_args',
+    'AutoUI',
+    'modules', 'modules.ui_DogeAutoSub', 'modules.constants', 'modules.subtitle_args',
     'modules.faster_whisper_engine', 'modules.chunk_processor',
     'modules.marian_translator', 'modules.meeting_notes',
     'modules.mlaas_client', 'modules.updater',
+    'modules.subtitle_thread', 'modules.meeting_notes_thread', 'modules.translate_thread'
 }
 a.pure = [entry for entry in a.pure if entry[0] not in updatable_modules]
 
@@ -138,8 +142,8 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=False,          # Windowed app (no console)
+    upx=False,
+    console=True,          # Temporary change to capture crash output
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -155,7 +159,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='DogeAutoSub',
 )

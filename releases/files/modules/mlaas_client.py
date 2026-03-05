@@ -1,13 +1,14 @@
-# v2.1.2 - Permanent API key from .env, x-api-key auth header
+# v2.1.2 - Hardcoded obfuscated API key, x-api-key auth header, batched translation
 """
 MLAAS API Client for DogeAutoSub.
 Integrates with the internal Virtuos MLAAS platform for:
   - Text Translation: POST /proxy/anthropic/v1/messages (Claude Sonnet — cost-efficient)
   - Text Summarization: POST /proxy/anthropic/v1/messages (Claude Sonnet — high quality)
 
-Auth: x-api-key header with permanent API key loaded from .env file.
+Auth: x-api-key header with embedded API key (obfuscated).
 """
 
+import base64
 import json
 import os
 import re
@@ -29,50 +30,60 @@ ANTHROPIC_MODEL_SUMMARIZATION = "claude-sonnet-4-20250514"  # Quality summarizat
 # Batching config
 TRANSLATION_BATCH_SIZE = 10  # Segments per API call
 
+# ── Embedded API Key (obfuscated) ───────────────────────────────
+# The key is base64-encoded to prevent casual reading in source code.
+# It is decoded at runtime when needed.
+_OBFUSCATED_KEY = "b2RfaWRaNjJsYTRsY1RjSDJWcTFDdUNUSWtHRnh6bFhzNExVVUFTQkJ1MA=="
 
-# ── .env loader ─────────────────────────────────────────────────
 
-def _load_env(env_path: Optional[str] = None) -> dict:
-    """Load key=value pairs from a .env file. No external dependencies."""
-    if env_path is None:
-        # Look for .env next to this module's parent (project root)
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env_path = os.path.join(root, ".env")
+def _decode_key() -> str:
+    """Decode the embedded API key at runtime."""
+    try:
+        return base64.b64decode(_OBFUSCATED_KEY).decode("utf-8")
+    except Exception:
+        return ""
 
-    env_vars = {}
+
+def get_api_key() -> str:
+    """
+    Get the MLAAS API key.
+    
+    Priority:
+      1. .env file override (MLAAS_API) — for development/testing
+      2. Embedded obfuscated key — for production use
+    """
+    # Check .env override first
+    env_key = _load_env_key()
+    if env_key:
+        return env_key
+    # Fall back to embedded key
+    return _decode_key()
+
+
+def _load_env_key() -> str:
+    """Try to load API key from .env file (optional override)."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(root, ".env")
+    
     if not os.path.exists(env_path):
-        return env_vars
-
+        return ""
+    
     try:
         with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                if "=" in line:
-                    key, _, value = line.partition("=")
-                    key = key.strip()
-                    value = value.strip().strip("'\"")  # Remove optional quotes
-                    env_vars[key] = value
-    except Exception as e:
-        print(f"Warning: Could not read .env file: {e}")
-
-    return env_vars
-
-
-def load_api_key() -> str:
-    """
-    Load the MLAAS API key from .env file.
-    
-    Looks for MLAAS_API in .env at the project root.
-    Returns empty string if not found.
-    """
-    env = _load_env()
-    return env.get("MLAAS_API", "")
+                if line.startswith("MLAAS_API") and "=" in line:
+                    _, _, value = line.partition("=")
+                    return value.strip().strip("'\"")
+    except Exception:
+        pass
+    return ""
 
 
 def get_masked_key(api_key: str) -> str:
-    """Return a masked version of the API key for display (e.g. 'od_idZ...BBu0')."""
+    """Return a masked version of the API key for display (e.g. 'od_id...BBu0')."""
     if not api_key:
         return ""
     if len(api_key) <= 10:
@@ -84,7 +95,7 @@ def get_masked_key(api_key: str) -> str:
 class MLAASConfig:
     """Configuration for MLAAS API connection.
     
-    Auth: permanent x-api-key loaded from .env file.
+    Auth: x-api-key header with embedded/obfuscated API key.
     """
     api_key: str = ""
     base_url: str = MLAAS_BASE_URL
@@ -94,8 +105,8 @@ class MLAASConfig:
 
     @classmethod
     def from_env(cls) -> "MLAASConfig":
-        """Create config by loading API key from .env file."""
-        return cls(api_key=load_api_key())
+        """Create config with the embedded API key (or .env override)."""
+        return cls(api_key=get_api_key())
 
 
 # ── API Calls ───────────────────────────────────────────────────
@@ -104,9 +115,7 @@ def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: i
     """Make a POST request to MLAAS API using x-api-key auth."""
     if not config.is_configured():
         raise ValueError(
-            "MLAAS API key not configured.\n"
-            "Add your API key to the .env file in the project root:\n"
-            "MLAAS_API = your_api_key_here"
+            "MLAAS API key not available. Contact the app developer."
         )
 
     url = f"{config.base_url.rstrip('/')}{endpoint}"
@@ -132,8 +141,7 @@ def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: i
         body = e.read().decode("utf-8", errors="replace") if e.fp else ""
         if e.code == 401:
             raise RuntimeError(
-                "Authentication failed (401). Your API key may be invalid.\n"
-                "Check the MLAAS_API value in your .env file."
+                "Authentication failed (401). The API key may be invalid or expired."
             )
         elif e.code == 429:
             raise RuntimeError("Rate limit exceeded (429). Please wait and try again.")

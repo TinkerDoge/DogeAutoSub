@@ -4,6 +4,13 @@ All notable changes to DogeAutoSub are documented in this file.
 
 ---
 
+## [2.2.0] - 2026-03-04
+
+### Changed
+- Major architectural refactoring: Decoupled UI and business logic by extracting worker threads from `AutoUI.py` into separate modules (`subtitle_thread.py`, `meeting_notes_thread.py`, `translate_thread.py`) for improved maintainability.
+
+---
+
 ## [2.1.1] - 2026-02-28
 
 ### Changed
