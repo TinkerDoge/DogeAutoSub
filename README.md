@@ -2,9 +2,12 @@
 
 **DogeAutoSub** is a GPU-accelerated desktop application for automatic subtitle generation, translation, and meeting note summarization. Built with PySide6 and powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2).
 
-> **Current Version:** v2.0.6
+ > **Current Version:** v2.2.2
 
----
+ ---
+ 
+ ### v2.2.2
+ - Fixed choppy transcription for long videos on low-spec GPUs. Minimum segment length and character count prevents single-word segments.
 
 ## ✨ Features
 

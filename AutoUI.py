@@ -317,7 +317,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
     def _select_docx(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Select Meeting Transcript", "",
-            "Word Documents (*.docx);;All Files (*.*)"
+            "Transcript Files (*.docx *.txt *.srt *.sub *.vtt);;Word Documents (*.docx);;Text Files (*.txt);;Subtitle Files (*.srt *.sub *.vtt);;All Files (*.*)"
         )
         if path:
             self.docx_path = path
@@ -326,7 +326,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
     
     def _generate_meeting_notes(self):
         if not self.docx_path:
-            QMessageBox.warning(self, "No File", "Please upload a DOCX transcript first.")
+            QMessageBox.warning(self, "No File", "Please select a transcript file first.")
             return
         
         if self.notes_thread and self.notes_thread.isRunning():

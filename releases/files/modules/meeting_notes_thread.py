@@ -15,11 +15,11 @@ class MeetingNotesThread(QThread):
     def run(self):
         try:
             from modules.meeting_notes import (
-                parse_meeting_docx, format_transcript_for_llm,
+                parse_meeting_transcript, format_transcript_for_llm,
             )
             
             self.status_update.emit("Parsing transcript…")
-            blocks = parse_meeting_docx(self.docx_path)
+            blocks = parse_meeting_transcript(self.docx_path)
             
             if not blocks:
                 self.error.emit("No speaker blocks found in the document. Check the format.")
@@ -38,6 +38,6 @@ class MeetingNotesThread(QThread):
             self.finished.emit(result)
             
         except ImportError as e:
-            self.error.emit(f"Missing dependency: {e}\nInstall with: pip install python-docx")
+            self.error.emit(f"Missing dependency: {e}")
         except Exception as e:
             self.error.emit(f"Error: {str(e)}")

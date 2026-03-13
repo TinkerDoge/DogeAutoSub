@@ -273,14 +273,14 @@ class FasterWhisperRecognizer:
             List of split segments
         """
         result = []
-        
+        MIN_SEGMENT_LENGTH = 2.0  # seconds
+        MIN_SEGMENT_CHARS = 10    # characters
         for seg in segments:
             duration = seg["end"] - seg["start"]
             text = seg["text"]
             words = seg.get("words")
-            
-            # If segment is short enough, keep as-is
-            if duration <= max_length and len(text) <= max_chars:
+            # If segment is short enough, keep as-is, but only if not too short
+            if (duration <= max_length and len(text) <= max_chars and duration >= MIN_SEGMENT_LENGTH and len(text) >= MIN_SEGMENT_CHARS):
                 result.append({
                     "start": seg["start"],
                     "end": seg["end"],

@@ -1,9 +1,9 @@
 {
-  "version": "2.2.0",
-  "filename": "DogeAutoSub_v2.2.0.zip",
-  "notes": "v2.2.0 - Decoupled UI and business logic",
+  "version": "2.2.2",
+  "filename": "DogeAutoSub_v2.2.2.zip",
+  "notes": "v2.2.2 - Fixed choppy transcription for long videos on low-spec GPUs. Minimum segment length and character count prevents single-word segments.",
   "files": { 
-    "AutoUI.py": "81a70cdf140faa79959eec2271b764f2df916cd3be6854f3258d90269868651b",
+    "AutoUI.py": "3dfb0cde48b0dba42d41374d08916b2063ece9d9471c60c508c911c47ca6b03a",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
     "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
     "icons/drop-down-menu.png": "e4316d74c055d5fb52c940acec5b7a95066a5cce8ea85dc5935c65a8a07a16f4",
@@ -17,8 +17,8 @@
     "modules/constants.py": "c8c7f3209643dbb72b5e260cfdeabd5d43eb42895fcbf345c95e593e5b1a3c24",
     "modules/faster_whisper_engine.py": "f5b48f836df05406309fd0212114e9fe4bd917b8f3f6be323fb9ae20e80f660d",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
-    "modules/meeting_notes.py": "772bd62d1ae69371943649ad0175b765c4c55a6a88a1e60b25604bc32fbd1691",
-    "modules/meeting_notes_thread.py": "39c9c67a9ce17b8ed7acb989c1676afd8e1dc28dbc974c2bd31b2370e6980f90",
+    "modules/meeting_notes.py": "2c5530fd3eb1ae868dd6946c2b394ccf04701c8daef95c7f2873b1947c264015",
+    "modules/meeting_notes_thread.py": "027424dc099874f8eafe4f7064450a3efc54651fce9a88af88fe33cff2c9dc44",
     "modules/mlaas_client.py": "dded606f785b484e7076699000861913a9acabad1a56dc7b318dd9ca3522a356",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
     "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
@@ -26,6 +26,6 @@
     "modules/subtitle_thread.py": "ac16ee4cad9e22192cc0866390f59965b6ea6a8b7c7c470f66779d02f4f64eef",
     "modules/translate_thread.py": "e9f52db14263e6b505eae5dc2422544b6cfb170909a0fdb868ecdd8cb709fc26",
     "modules/ui_DogeAutoSub.py": "e7364d3ffea5376bc742598ebbbc9f557c46a90840d4f1b74817b0b252f9e5be",
-    "modules/updater.py": "6e19f7602b6b81e06fd950375fb73f673d4252ea9b172ea9892425441677fb1c"
+    "modules/updater.py": "43dcfd6e903c45a3f8e2825fc3e99311f15009ff36911e004cc39e5b9ae90063"
   }
 }

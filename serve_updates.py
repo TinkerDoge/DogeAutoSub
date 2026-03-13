@@ -126,10 +126,10 @@ def start_server(port: int):
     with ReusableTCPServer(("0.0.0.0", port), handler) as httpd:
         print(f"")
         print(f"  ╔══════════════════════════════════════════════════╗")
-        print(f"  ║  DogeAutoSub Update Server                      ║")
+        print(f"  ║  DogeAutoSub Update Server                       ║")
         print(f"  ╠══════════════════════════════════════════════════╣")
-        print(f"  ║  Serving:  {RELEASES_DIR:<38}║")
-        print(f"  ║  URL:      http://{local_ip}:{port:<24}║")
+        print(f"  ║  Serving:  {RELEASES_DIR:<38}                    ║")
+        print(f"  ║  URL:      http://{local_ip}:{port:<24}          ║")
         print(f"  ║  Mode:     Delta Patch (modified files only)     ║")
         print(f"  ╚══════════════════════════════════════════════════╝")
         print(f"")

@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-DogeAutoSub v2.0 — PyInstaller spec file.
+DogeAutoSub v2.2.2 — PyInstaller spec file.
 Updated for the cleaned-up module structure (faster-whisper only).
 """
 import os

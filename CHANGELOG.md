@@ -4,6 +4,14 @@ All notable changes to DogeAutoSub are documented in this file.
 
 ---
 
+## [2.2.1] - 2026-03-12
+
+### Changed
+- Meeting Notes now accepts `.docx`, `.txt`, `.srt`, `.sub`, and `.vtt` transcript files
+- Added plain-text and subtitle parsers for meeting note generation
+
+---
+
 ## [2.2.0] - 2026-03-04
 
 ### Changed
