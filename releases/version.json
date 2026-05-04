@@ -1,7 +1,7 @@
 {
   "version": "2.3.1",
   "filename": "DogeAutoSub_v2.3.1.zip",
-  "notes": "v2.3.1 - Refresh MLAAS models at app startup, curate translation model list (Sonnet Latest, Opus Latest, GPT family), and fix startup NameError in MLAAS model loading.",
+  "notes": "MLAAS startup model refresh; curated translation model list; API tracing header",
   "files": {
     "AutoUI.py": "2819443770cd66aa95aa6043039647cd124e99646306eea44089eef5b94c143b",
     "generate_v230.py": "def5460e861c17abe980afb2230ccf12648a50d5623a1815c801c5ce21053f48",
@@ -19,7 +19,7 @@
     "modules/constants.py": "766726643f591d1a0a53bc9379a07334966803fb2f1555bb822fac83b6ac6558",
     "modules/faster_whisper_engine.py": "c870f6a317ccb48de34a16f5ee1a77887deb1b081a12ec7d21cc9b610442cf71",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
-    "modules/meeting_notes.py": "2c5530fd3eb1ae868dd6946c2b394ccf04701c8daef95c7f2873b1947c264015",
+    "modules/meeting_notes.py": "6412362dafc61437a07b3e4607d793761352a15f29a6753e59888870406a4834",
     "modules/meeting_notes_thread.py": "027424dc099874f8eafe4f7064450a3efc54651fce9a88af88fe33cff2c9dc44",
     "modules/mlaas_client.py": "41aa391c785ecc31143e2dcece7c2c872c6cf6f8715f60637bf1838fb1327289",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
@@ -28,6 +28,6 @@
     "modules/subtitle_thread.py": "e0191f4ddc387f752d6478da4607587cfa21f2318924a01f7984463ed48c8aa5",
     "modules/translate_thread.py": "0eb59527f09a6401765220829b4dfeab95e8d4f0730318a66ea241911b4068b8",
     "modules/ui_DogeAutoSub.py": "8b6f3c3d562509d55fcd83941b5dcf6d00656b432f529326f42ddea60f5ba2b2",
-    "modules/updater.py": "2c08a176fd36fde6e4eb2ed446ba2ed97406a56d63bc1a081e4c153117c07779"
+    "modules/updater.py": "9128be5f4b586e377deee2ebf5d07068de8b44045ac928e18cd1b6fd364f7907"
   }
 }
