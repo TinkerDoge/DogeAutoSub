@@ -8,7 +8,7 @@ FFMPEG_PATH = os.path.join(SCRIPT_DIR, "modules", "ffmpeg", "bin", "ffmpeg.exe")
 TEMP_DIR = os.path.join(SCRIPT_DIR, "modules", "temp")
 
 from modules.subtitle_args import SubtitleArgs
-from modules.mlaas_client import MLAASConfig, translate_segments_mlaas
+from modules.mlaas_client import MLAASConfig, translate_segments_mlaas, translate_segments_openai
 from modules.constants import LANGUAGE_CODES_AI
 
 # Try importing optional translation engines
@@ -17,17 +17,6 @@ try:
     GOOGLE_TRANSLATE_AVAILABLE = True
 except ImportError:
     GOOGLE_TRANSLATE_AVAILABLE = False
-
-try:
-    from modules.marian_translator import MarianTranslator, MARIAN_AVAILABLE
-except ImportError:
-    MARIAN_AVAILABLE = False
-
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
 
 
 def _lang_code(name: str, default: str = "auto") -> str:
@@ -241,26 +230,14 @@ class SubtitleThread(QThread):
                 translated_segments = None
                 
                 try:
-                    if engine == "mlaas":
-                        self.status_update.emit(f"Translating via MLAAS API ({actual_src} → {dst_code})…")
+                    if engine not in ("google", "whisper"):
+                        self.status_update.emit(f"Translating via {engine} ({actual_src} → {dst_code})…")
                         mlaas_config = MLAASConfig.from_env()
-                        translated_segments = translate_segments_mlaas(
+                        translated_segments = translate_segments_openai(
                             segs, dst_code, mlaas_config,
                             progress_callback=lambda p: self.progress_update.emit(86 + int(p * 0.13)),
+                            model=engine,
                         )
-                    elif engine == "marian" and MARIAN_AVAILABLE:
-                        translator = MarianTranslator(actual_src, dst_code)
-                        if translator.load_model():
-                            texts = [s.get("text", "") for s in segs]
-                            preds = translator.translate_batch(
-                                texts,
-                                batch_size=8 if (TORCH_AVAILABLE and torch.cuda.is_available()) else 4,
-                                progress_cb=lambda f: self.progress_update.emit(86 + int((f or 0) * 13)),
-                            )
-                            translated_segments = [
-                                {"start": s["start"], "end": s["end"], "text": preds[i] if i < len(preds) else s.get("text", "")}
-                                for i, s in enumerate(segs)
-                            ]
                     elif engine == "whisper" and hasattr(recognizer, 'translate'):
                         # Use the audio already extracted by ChunkProcessor
                         audio_path = os.path.join(TEMP_DIR, "chunks", "full_audio.wav")

@@ -7,10 +7,6 @@ try:
 except ImportError:
     GOOGLE_TRANSLATE_AVAILABLE = False
 
-try:
-    from modules.marian_translator import MarianTranslator, MARIAN_AVAILABLE
-except ImportError:
-    MARIAN_AVAILABLE = False
 
 
 def _read_file_content(filepath: str) -> str:
@@ -84,22 +80,15 @@ def _translate_single(text: str, src: str, dst: str, engine: str, api_key: str =
     """Translate a single text string using the selected engine."""
     if not text.strip():
         return text
-    
-    if engine == "mlaas":
-        from modules.mlaas_client import translate_text_mlaas, MLAASConfig
+
+    if engine != "google":
+        from modules.mlaas_client import translate_text_openai, MLAASConfig
         config = MLAASConfig.from_env()
-        return translate_text_mlaas(text, dst, config)
-    elif engine == "marian" and MARIAN_AVAILABLE:
-        translator = MarianTranslator(src, dst)
-        if translator.load_model():
-            results = translator.translate_batch([text], batch_size=1)
-            return results[0] if results else text
-        return text
-    else:
-        # Google Translate
-        if GOOGLE_TRANSLATE_AVAILABLE:
-            return GoogleTranslator(source=src if src != "auto" else "auto", target=dst).translate(text) or text
-        return text
+        return translate_text_openai(text, dst, config, model=engine)
+
+    if GOOGLE_TRANSLATE_AVAILABLE:
+        return GoogleTranslator(source=src if src != "auto" else "auto", target=dst).translate(text) or text
+    return text
 
 
 class TranslateFileThread(QThread):

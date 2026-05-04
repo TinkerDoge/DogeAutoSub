@@ -186,7 +186,7 @@ class Ui_MainWindow(object):
         self.target_engine = QComboBox()
         self.target_engine.setObjectName("engineDropdown")
         self.target_engine.setFont(self.font_body)
-        self.target_engine.setToolTip("MLAAS (fastest, uses internal API). Google for offline fallback. Whisper can only translate to English.")
+        self.target_engine.setToolTip("Claude/GPT use MLAAS API. Google Translate for offline fallback. Whisper can only translate to English.")
         engineVolGrid.addWidget(self.target_engine, 1, 0)
 
         engineVolGrid.addWidget(self._label("Volume Boost"), 0, 1)

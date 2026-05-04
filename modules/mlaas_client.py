@@ -18,19 +18,54 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional
 
 
-# ── API Configuration ───────────────────────────────────────────
+
+# ── Model List Cache ────────────────────────────────────────────
+_MLAAS_MODEL_LIST = []
+_MLAAS_MODEL_LIST_LAST_ERROR = None
+
+def fetch_mlaas_model_list(config: 'MLAASConfig' = None) -> list:
+    """Fetch available models from MLAAS and cache them."""
+    global _MLAAS_MODEL_LIST, _MLAAS_MODEL_LIST_LAST_ERROR
+    config = config or MLAASConfig.from_env()
+    url = f"{config.base_url.rstrip('/')}/proxy/openai/v1/models"
+    headers = {
+        "Accept": "application/json",
+        "x-api-key": config.api_key,
+        "x-application-name": MLAAS_APP_NAME,
+    }
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            _MLAAS_MODEL_LIST = data.get("data", [])
+            _MLAAS_MODEL_LIST_LAST_ERROR = None
+    except Exception as e:
+        _MLAAS_MODEL_LIST = []
+        _MLAAS_MODEL_LIST_LAST_ERROR = str(e)
+    return _MLAAS_MODEL_LIST
+
+def get_cached_mlaas_model_list() -> list:
+    """Return the last cached MLAAS model list."""
+    return _MLAAS_MODEL_LIST
+
+def get_mlaas_model_list_error() -> str:
+    """Return the last error from model list fetch, if any."""
+    return _MLAAS_MODEL_LIST_LAST_ERROR
 
 MLAAS_BASE_URL = "https://mlaas.virtuosgames.com"
 MLAAS_APP_NAME = "DogeAutoSub"
 
+
 # Model tiers — use the cheapest model that does the job well
-ANTHROPIC_MODEL_TRANSLATION = "claude-sonnet-4-20250514"   # Fast, cheap, great at translation
-ANTHROPIC_MODEL_SUMMARIZATION = "claude-sonnet-4-20250514"  # Quality summarization
+ANTHROPIC_MODEL_TRANSLATION = "claude-sonnet-4-20250514"   # Default fallback if model list fetch fails
+ANTHROPIC_MODEL_SUMMARIZATION = "claude-sonnet-4-20250514"
+OPENAI_MODEL_TRANSLATION = "gpt-4o-mini"
 
 # Batching config
-TRANSLATION_BATCH_SIZE = 10  # Segments per API call
+TRANSLATION_BATCH_SIZE = 20  # Max segments per API call (adaptive packing may use fewer)
+TRANSLATION_CHUNK_SIZE = 200  # Segments per translation chunk (resets context for long transcripts)
+TRANSLATION_BATCH_CHAR_BUDGET = 2400  # Soft cap to avoid oversized prompts/timeouts
 
-# ── Embedded API Key (obfuscated) ───────────────────────────────
 # The key is base64-encoded to prevent casual reading in source code.
 # It is decoded at runtime when needed.
 _OBFUSCATED_KEY = "b2RfaWRaNjJsYTRsY1RjSDJWcTFDdUNUSWtHRnh6bFhzNExVVUFTQkJ1MA=="
@@ -244,6 +279,63 @@ def _translate_batch_mlaas(
     return translations
 
 
+def _translate_batch_resilient(
+    texts: List[str],
+    target_language: str,
+    config: MLAASConfig,
+    max_split_depth: int = 3,
+) -> List[str]:
+    """
+    Translate with fallback splitting on transient failures.
+    This keeps normal request count low, and only increases calls when a large batch fails.
+    """
+    if not texts:
+        return []
+
+    try:
+        return _translate_batch_mlaas(texts, target_language, config)
+    except Exception as e:
+        # If this is already a single item (or split depth exhausted), bubble up.
+        if len(texts) <= 1 or max_split_depth <= 0:
+            raise RuntimeError(f"MLAAS translate failed for batch size {len(texts)}: {e}")
+
+        mid = len(texts) // 2
+        left = _translate_batch_resilient(texts[:mid], target_language, config, max_split_depth - 1)
+        right = _translate_batch_resilient(texts[mid:], target_language, config, max_split_depth - 1)
+        return left + right
+
+
+def _pack_text_batches(texts: List[str], max_items: int, char_budget: int) -> List[List[str]]:
+    """Pack subtitle lines into larger requests while respecting a soft character budget."""
+    if not texts:
+        return []
+
+    max_items = max(1, int(max_items))
+    char_budget = max(300, int(char_budget))
+
+    batches: List[List[str]] = []
+    current: List[str] = []
+    current_chars = 0
+
+    for text in texts:
+        item_chars = len(text)
+        would_exceed_items = len(current) >= max_items
+        would_exceed_chars = current and (current_chars + item_chars > char_budget)
+
+        if would_exceed_items or would_exceed_chars:
+            batches.append(current)
+            current = []
+            current_chars = 0
+
+        current.append(text)
+        current_chars += item_chars
+
+    if current:
+        batches.append(current)
+
+    return batches
+
+
 def _parse_numbered_response(response: str, expected_count: int) -> List[str]:
     """Parse [N] numbered response back into a list."""
     results = {}
@@ -266,7 +358,7 @@ def _parse_numbered_response(response: str, expected_count: int) -> List[str]:
             if cleaned and i not in results:
                 results[i] = cleaned
 
-    return [results.get(i, "") for i in range(max(len(results), 0))]
+    return [results.get(i, "") for i in range(expected_count)]
 
 
 def translate_segments_mlaas(
@@ -275,53 +367,272 @@ def translate_segments_mlaas(
     config: MLAASConfig,
     progress_callback: Optional[Callable[[int], None]] = None,
     batch_size: int = TRANSLATION_BATCH_SIZE,
+    chunk_size: int = TRANSLATION_CHUNK_SIZE,
+    batch_char_budget: int = TRANSLATION_BATCH_CHAR_BUDGET,
 ) -> list:
-    """Translate subtitle segments using batched MLAAS calls."""
+    """Translate subtitle segments using chunked + batched MLAAS calls."""
     total = len(segments)
     if total == 0:
         return []
 
+    batch_size = max(1, int(batch_size))
+    chunk_size = max(1, int(chunk_size))
+    batch_char_budget = max(300, int(batch_char_budget))
+
     translated = []
-    batch_count = (total + batch_size - 1) // batch_size
+    chunk_count = (total + chunk_size - 1) // chunk_size
 
-    print(f"Translating {total} segments in {batch_count} batched API calls (batch_size={batch_size})")
+    print(
+        f"Translating {total} segments in {chunk_count} chunks "
+        f"(chunk_size={chunk_size}, batch_size={batch_size})"
+    )
 
-    for batch_idx in range(batch_count):
-        start = batch_idx * batch_size
-        end = min(start + batch_size, total)
-        batch_segs = segments[start:end]
+    for chunk_idx in range(chunk_count):
+        chunk_start = chunk_idx * chunk_size
+        chunk_end = min(chunk_start + chunk_size, total)
+        chunk_segs = segments[chunk_start:chunk_end]
+        chunk_total = len(chunk_segs)
+        chunk_batch_count = (chunk_total + batch_size - 1) // batch_size
 
-        texts = []
-        text_indices = []
+        print(
+            f"MLAAS chunk {chunk_idx + 1}/{chunk_count}: "
+            f"segments {chunk_start + 1}-{chunk_end} in {chunk_batch_count} API calls"
+        )
 
-        for i, seg in enumerate(batch_segs):
-            text = seg.get("text", "").strip()
-            if text:
-                texts.append(text)
-                text_indices.append(i)
+        for batch_idx in range(chunk_batch_count):
+            start = batch_idx * batch_size
+            end = min(start + batch_size, chunk_total)
+            batch_segs = chunk_segs[start:end]
 
-        translations = []
-        if texts:
-            try:
-                translations = _translate_batch_mlaas(texts, target_language, config)
-            except Exception as e:
-                print(f"MLAAS batch translate error (batch {batch_idx + 1}): {e}")
-                translations = texts
+            texts = []
+            text_indices = []
+            for i, seg in enumerate(batch_segs):
+                text = seg.get("text", "").strip()
+                if text:
+                    texts.append(text)
+                    text_indices.append(i)
 
-        trans_idx = 0
-        for i, seg in enumerate(batch_segs):
-            if i in text_indices and trans_idx < len(translations):
-                translated.append({
-                    "start": seg["start"],
-                    "end": seg["end"],
-                    "text": translations[trans_idx],
-                })
-                trans_idx += 1
-            else:
-                translated.append(seg)
+            translations = []
+            if texts:
+                packed = _pack_text_batches(texts, max_items=batch_size, char_budget=batch_char_budget)
+                for pack_idx, pack in enumerate(packed):
+                    try:
+                        part = _translate_batch_resilient(pack, target_language, config)
+                        translations.extend(part)
+                    except Exception as e:
+                        print(
+                            f"MLAAS batch translate error "
+                            f"(chunk {chunk_idx + 1}, batch {batch_idx + 1}, part {pack_idx + 1}): {e}"
+                        )
+                        translations.extend(pack)
 
-        if progress_callback and total > 0:
-            progress_callback(int((end / total) * 100))
+            trans_idx = 0
+            for i, seg in enumerate(batch_segs):
+                if i in text_indices and trans_idx < len(translations):
+                    translated.append({
+                        "start": seg["start"],
+                        "end": seg["end"],
+                        "text": translations[trans_idx],
+                    })
+                    trans_idx += 1
+                else:
+                    translated.append(seg)
+
+            if progress_callback and total > 0:
+                global_done = chunk_start + end
+                progress_callback(int((global_done / total) * 100))
+
+    return translated
+
+
+# ── OpenAI Translation (via MLAAS proxy) ────────────────────────
+
+def _parse_openai_response(result: dict) -> str:
+    """Extract text from OpenAI Chat Completion response."""
+    choices = result.get("choices", [])
+    if isinstance(choices, list) and len(choices) > 0:
+        msg = choices[0].get("message", {})
+        return msg.get("content", "").strip()
+    return ""
+
+
+def translate_text_openai(
+    text: str,
+    target_language: str,
+    config: MLAASConfig,
+    model: Optional[str] = None,
+) -> str:
+    """Translate a single text string using GPT via MLAAS OpenAI proxy."""
+    target_lang_name = MLAAS_LANGUAGE_MAP.get(target_language.lower(), target_language.lower())
+    selected_model = model or OPENAI_MODEL_TRANSLATION
+
+    payload = {
+        "model": selected_model,
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    f"Translate to {target_lang_name}. "
+                    "Fix any obvious speech-to-text errors before translating. "
+                    "Return ONLY the translation, nothing else.\n\n"
+                    f"{text}"
+                ),
+            },
+        ],
+        "max_tokens": 1024,
+        "temperature": 0.3,
+    }
+
+    result = _mlaas_request("/proxy/openai/v1/chat/completions", payload, config, timeout=30)
+    return _parse_openai_response(result)
+
+
+def _translate_batch_openai(
+    texts: List[str],
+    target_language: str,
+    config: MLAASConfig,
+    model: Optional[str] = None,
+) -> List[str]:
+    """Translate a batch of numbered texts in a single OpenAI API call."""
+    target_lang_name = MLAAS_LANGUAGE_MAP.get(target_language.lower(), target_language.lower())
+    selected_model = model or OPENAI_MODEL_TRANSLATION
+
+    numbered = "\n".join(f"[{i+1}] {t}" for i, t in enumerate(texts))
+
+    payload = {
+        "model": selected_model,
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    f"Translate each numbered line to {target_lang_name}. "
+                    "These are subtitle lines from speech-to-text — fix obvious transcription errors. "
+                    "Return ONLY the translations in the same [N] format, one per line.\n\n"
+                    f"{numbered}"
+                ),
+            },
+        ],
+        "max_tokens": 2048,
+        "temperature": 0.3,
+    }
+
+    result = _mlaas_request("/proxy/openai/v1/chat/completions", payload, config, timeout=60)
+    response_text = _parse_openai_response(result)
+
+    translations = _parse_numbered_response(response_text, len(texts))
+
+    if len(translations) != len(texts):
+        print(f"Warning: Expected {len(texts)} translations, got {len(translations)}. Padding with originals.")
+        while len(translations) < len(texts):
+            translations.append(texts[len(translations)])
+
+    return translations
+
+
+def _translate_batch_openai_resilient(
+    texts: List[str],
+    target_language: str,
+    config: MLAASConfig,
+    max_split_depth: int = 3,
+    model: Optional[str] = None,
+) -> List[str]:
+    """Translate with fallback splitting on transient failures (OpenAI variant)."""
+    if not texts:
+        return []
+
+    try:
+        return _translate_batch_openai(texts, target_language, config, model=model)
+    except Exception as e:
+        if len(texts) <= 1 or max_split_depth <= 0:
+            raise RuntimeError(f"OpenAI translate failed for batch size {len(texts)}: {e}")
+
+        mid = len(texts) // 2
+        left = _translate_batch_openai_resilient(texts[:mid], target_language, config, max_split_depth - 1, model=model)
+        right = _translate_batch_openai_resilient(texts[mid:], target_language, config, max_split_depth - 1, model=model)
+        return left + right
+
+
+def translate_segments_openai(
+    segments: list,
+    target_language: str,
+    config: MLAASConfig,
+    progress_callback: Optional[Callable[[int], None]] = None,
+    batch_size: int = TRANSLATION_BATCH_SIZE,
+    chunk_size: int = TRANSLATION_CHUNK_SIZE,
+    batch_char_budget: int = TRANSLATION_BATCH_CHAR_BUDGET,
+    model: Optional[str] = None,
+) -> list:
+    """Translate subtitle segments using chunked + batched OpenAI calls via MLAAS."""
+    total = len(segments)
+    if total == 0:
+        return []
+
+    batch_size = max(1, int(batch_size))
+    chunk_size = max(1, int(chunk_size))
+    batch_char_budget = max(300, int(batch_char_budget))
+
+    translated = []
+    chunk_count = (total + chunk_size - 1) // chunk_size
+
+    print(
+        f"OpenAI translating {total} segments in {chunk_count} chunks "
+        f"(chunk_size={chunk_size}, batch_size={batch_size})"
+    )
+
+    for chunk_idx in range(chunk_count):
+        chunk_start = chunk_idx * chunk_size
+        chunk_end = min(chunk_start + chunk_size, total)
+        chunk_segs = segments[chunk_start:chunk_end]
+        chunk_total = len(chunk_segs)
+        chunk_batch_count = (chunk_total + batch_size - 1) // batch_size
+
+        print(
+            f"OpenAI chunk {chunk_idx + 1}/{chunk_count}: "
+            f"segments {chunk_start + 1}-{chunk_end} in {chunk_batch_count} API calls"
+        )
+
+        for batch_idx in range(chunk_batch_count):
+            start = batch_idx * batch_size
+            end = min(start + batch_size, chunk_total)
+            batch_segs = chunk_segs[start:end]
+
+            texts = []
+            text_indices = []
+            for i, seg in enumerate(batch_segs):
+                text = seg.get("text", "").strip()
+                if text:
+                    texts.append(text)
+                    text_indices.append(i)
+
+            translations = []
+            if texts:
+                packed = _pack_text_batches(texts, max_items=batch_size, char_budget=batch_char_budget)
+                for pack_idx, pack in enumerate(packed):
+                    try:
+                        part = _translate_batch_openai_resilient(pack, target_language, config, model=model)
+                        translations.extend(part)
+                    except Exception as e:
+                        print(
+                            f"OpenAI batch translate error "
+                            f"(chunk {chunk_idx + 1}, batch {batch_idx + 1}, part {pack_idx + 1}): {e}"
+                        )
+                        translations.extend(pack)
+
+            trans_idx = 0
+            for i, seg in enumerate(batch_segs):
+                if i in text_indices and trans_idx < len(translations):
+                    translated.append({
+                        "start": seg["start"],
+                        "end": seg["end"],
+                        "text": translations[trans_idx],
+                    })
+                    trans_idx += 1
+                else:
+                    translated.append(seg)
+
+            if progress_callback and total > 0:
+                global_done = chunk_start + end
+                progress_callback(int((global_done / total) * 100))
 
     return translated
 

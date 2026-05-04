@@ -29,6 +29,60 @@ except ImportError:
     VRAM_GB = 0
 
 
+def _is_legacy_gpu_for_whisper(model_size: str) -> bool:
+    """
+    Decide whether auto mode should prefer CPU for older/low-VRAM GPUs.
+
+    This avoids very long model load times or instability on legacy cards.
+    """
+    if not CUDA_AVAILABLE:
+        return False
+
+    # Manual override for support/debug: set DOGE_FORCE_CPU=1 to force CPU in auto mode.
+    if os.environ.get("DOGE_FORCE_CPU", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return True
+
+    normalized = (model_size or "").lower()
+    heavy_models = {"large", "large-v2", "large-v3", "large-v3-turbo", "turbo", "distil-large-v3"}
+
+    try:
+        gpu_name = torch.cuda.get_device_name(0).lower() if CUDA_AVAILABLE else ""
+        capability = torch.cuda.get_device_capability(0) if CUDA_AVAILABLE else (0, 0)
+    except Exception:
+        gpu_name = ""
+        capability = (0, 0)
+
+    # Known slow legacy/workstation series for large Whisper models.
+    if any(tag in gpu_name for tag in ["quadro p2000", "quadro", "gtx 10", "pascal"]):
+        if normalized in heavy_models:
+            return True
+
+    # Older architectures (pre-Turing, compute capability < 7.0) struggle with heavy models.
+    if capability and capability[0] < 7 and normalized in heavy_models:
+        return True
+
+    # Conservative VRAM guard for heavy models.
+    if VRAM_GB < 6.0 and normalized in heavy_models:
+        return True
+
+    return False
+
+
+def _resolve_device(model_size: str, requested_device: Optional[str]) -> str:
+    """Resolve runtime device with optional legacy-GPU CPU fallback in auto mode."""
+    if requested_device is not None:
+        return requested_device
+
+    if not CUDA_AVAILABLE:
+        return "cpu"
+
+    if _is_legacy_gpu_for_whisper(model_size):
+        print("Legacy/low-VRAM GPU detected in auto mode; using CPU fallback for model load.")
+        return "cpu"
+
+    return "cuda"
+
+
 def get_optimal_compute_type(model_size: str, device: str) -> str:
     """
     Determine optimal compute type based on available resources.
@@ -82,6 +136,7 @@ class FasterWhisperRecognizer:
         device: Optional[str] = None,
         compute_type: Optional[str] = None,
         download_root: Optional[str] = None,
+        allow_cpu_fallback: bool = True,
     ):
         """
         Initialize FasterWhisperRecognizer.
@@ -92,6 +147,7 @@ class FasterWhisperRecognizer:
             device: "cuda" or "cpu" (auto-detected if None)
             compute_type: "float16", "int8_float16", or "int8" (auto-selected if None)
             download_root: Custom model download directory
+            allow_cpu_fallback: Retry on CPU if CUDA model load fails
         """
         if not FASTER_WHISPER_AVAILABLE:
             raise ImportError(
@@ -108,11 +164,8 @@ class FasterWhisperRecognizer:
         }
         self.model_size = model_mapping.get(model_size.lower(), model_size)
         
-        # Auto-detect device
-        if device is None:
-            self.device = "cuda" if CUDA_AVAILABLE else "cpu"
-        else:
-            self.device = device
+        # Auto-detect/select device (with legacy-GPU protection in auto mode)
+        self.device = _resolve_device(self.model_size, device)
         
         # Auto-select compute type
         if compute_type is None:
@@ -135,18 +188,31 @@ class FasterWhisperRecognizer:
                 compute_type=self.compute_type,
                 download_root=download_root,
             )
-            
+
             # Create batched pipeline for additional speedup
             if self.device == "cuda":
                 self.batched_model = BatchedInferencePipeline(model=self.model)
             else:
                 self.batched_model = None
-                
+
             print("faster-whisper model loaded successfully")
-            
+
         except Exception as e:
-            print(f"Error loading faster-whisper model: {e}")
-            raise
+            if allow_cpu_fallback and self.device == "cuda":
+                print(f"CUDA model load failed ({e}). Retrying on CPU...")
+                self.device = "cpu"
+                self.compute_type = get_optimal_compute_type(self.model_size, self.device)
+                self.model = WhisperModel(
+                    self.model_size,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                    download_root=download_root,
+                )
+                self.batched_model = None
+                print("faster-whisper model loaded on CPU fallback")
+            else:
+                print(f"Error loading faster-whisper model: {e}")
+                raise
     
     def detect_language(self, audio_path: str) -> Optional[str]:
         """
@@ -273,14 +339,14 @@ class FasterWhisperRecognizer:
             List of split segments
         """
         result = []
-        
+        MIN_SEGMENT_LENGTH = 2.0  # seconds
+        MIN_SEGMENT_CHARS = 10    # characters
         for seg in segments:
             duration = seg["end"] - seg["start"]
             text = seg["text"]
             words = seg.get("words")
-            
-            # If segment is short enough, keep as-is
-            if duration <= max_length and len(text) <= max_chars:
+            # If segment is short enough, keep as-is, but only if not too short
+            if (duration <= max_length and len(text) <= max_chars and duration >= MIN_SEGMENT_LENGTH and len(text) >= MIN_SEGMENT_CHARS):
                 result.append({
                     "start": seg["start"],
                     "end": seg["end"],

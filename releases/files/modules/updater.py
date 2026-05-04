@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Current app version ─────────────────────────────────────────
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.3.1"
 
 # Default update server — override in updater_config.json
 DEFAULT_UPDATE_URL = "http://10.76.171.156:8100"
@@ -377,7 +377,7 @@ def generate_manifest(
         "files": {},
     }
 
-    skip_dirs = {".venv", "__pycache__", ".git", "build", "dist",
+    skip_dirs = {".venv", "__pycache__", ".git", ".github", ".agents", ".vscode", "build", "dist",
                  "DOCs", "releases", "temp", "models", "CUDA", "ffmpeg",
                  "marian_cache", "QTDesign", ".no_exist", "snapshots"}
     skip_files = {"updater_config.json", "mlaas_config.json",

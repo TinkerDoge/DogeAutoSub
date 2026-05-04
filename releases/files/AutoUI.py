@@ -32,9 +32,9 @@ from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
 from PySide6.QtCore import QThread, QUrl, Qt, Signal
 
 from modules import ui_DogeAutoSub
-from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES
+from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES, TRANSLATION_ENGINES, TRANSLATION_ENGINES_SUBTITLE_ONLY
 from modules.subtitle_args import SubtitleArgs
-from modules.mlaas_client import MLAASConfig, translate_segments_mlaas, summarize_text_mlaas, get_masked_key, get_api_key
+from modules.mlaas_client import MLAASConfig, fetch_mlaas_model_list, translate_segments_mlaas, summarize_text_mlaas, get_masked_key, get_api_key
 from modules.updater import APP_VERSION, check_for_update, download_and_apply_update, restart_app
 
 from modules.subtitle_thread import SubtitleThread, ThroughputTracker, _lang_code
@@ -61,10 +61,7 @@ except ImportError:
     GOOGLE_TRANSLATE_AVAILABLE = False
     print("Google Translate not available (install deep-translator)")
 
-try:
-    from modules.marian_translator import MarianTranslator, MARIAN_AVAILABLE
-except ImportError:
-    MARIAN_AVAILABLE = False
+
 
 try:
     import torch
@@ -126,9 +123,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 Qt.TransformationMode.SmoothTransformation,
             )
         
+        # ── Load MLAAS API key from .env ─────────────────────
+        self.mlaas_config = MLAASConfig.from_env()
+
         # ── Populate dropdowns ──────────────────────────────────
         self._setup_model_dropdown()
         self._setup_language_dropdowns()
+        fetch_mlaas_model_list(self.mlaas_config)
         self._setup_translation_engines()
         
         # ── Connect signals ─────────────────────────────────────
@@ -149,8 +150,6 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.translateFileBtn.clicked.connect(self._start_file_translation)
         self.saveTransBtn.clicked.connect(self._save_translation)
         
-        # ── Load MLAAS API key from .env ─────────────────────
-        self.mlaas_config = MLAASConfig.from_env()
         masked = get_masked_key(self.mlaas_config.api_key)
         if self.mlaas_config.is_configured():
             self.mlaasStatusLabel.setText(f"✅ DOGE AUTO SUB API PRO MAX")
@@ -190,15 +189,52 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.target_language_dropdown.setCurrentText("English")
     
     def _setup_translation_engines(self):
-        # Subtitles tab engine
+        """Populate engine dropdowns with a small curated MLAAS model list."""
+        from modules.mlaas_client import get_cached_mlaas_model_list
+        # Build engine key → display name mapping
+        self._engine_key_map = {}  # display_name → engine_key
+
+        dynamic_engines = []
+        seen_engine_keys = set()
+        preferred_model_order = ["claude-sonnet-latest", "claude-opus-latest"]
+        preferred_model_labels = {
+            "claude-sonnet-latest": "Sonnet Latest (MLAAS)",
+            "claude-opus-latest": "Opus Latest (MLAAS)",
+        }
+        cached_models = get_cached_mlaas_model_list()
+
+        for model_id in preferred_model_order:
+            if any((item.get("id") or "").strip() == model_id for item in cached_models):
+                dynamic_engines.append((model_id, preferred_model_labels[model_id]))
+                seen_engine_keys.add(model_id)
+
+        for model in cached_models:
+            model_id = (model.get("id") or "").strip()
+            if not model_id or model_id in seen_engine_keys:
+                continue
+            if not model_id.startswith("gpt-"):
+                continue
+
+            gpt_parts = model_id.split("-")
+            gpt_label = " ".join(
+                [gpt_parts[0].upper()] + [part.capitalize() if part.isalpha() else part for part in gpt_parts[1:]]
+            )
+            label = f"{gpt_label} (MLAAS)"
+            dynamic_engines.append((model_id, label))
+            seen_engine_keys.add(model_id)
+
+        # Subtitles tab engine (includes whisper)
         self.target_engine.clear()
-        self.target_engine.addItem("mlaas")
-        self.target_engine.addItem("google")
-        self.target_engine.addItem("whisper")
-        if MARIAN_AVAILABLE:
-            self.target_engine.addItem("marian")
-        self.target_engine.setCurrentText("mlaas")
-        
+        all_subtitle_engines = list(dynamic_engines)
+        for key, display in TRANSLATION_ENGINES:
+            if key not in seen_engine_keys:
+                all_subtitle_engines.append((key, display))
+        all_subtitle_engines.extend(TRANSLATION_ENGINES_SUBTITLE_ONLY)
+        for key, display in all_subtitle_engines:
+            self.target_engine.addItem(display)
+            self._engine_key_map[display] = key
+        self.target_engine.setCurrentIndex(0)
+
         # Translation tab dropdowns — reuse same languages
         self.trans_src_lang.clear()
         self.trans_tgt_lang.clear()
@@ -209,14 +245,21 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 self.trans_tgt_lang.addItem(name)
         self.trans_src_lang.setCurrentText("Auto")
         self.trans_tgt_lang.setCurrentText("Vietnamese")
-        
-        # Translation tab engine
+
+        # Translation tab engine (no whisper)
         self.trans_engine.clear()
-        self.trans_engine.addItem("mlaas")
-        self.trans_engine.addItem("google")
-        if MARIAN_AVAILABLE:
-            self.trans_engine.addItem("marian")
-        self.trans_engine.setCurrentText("mlaas")
+        engines = list(dynamic_engines)
+        for key, display in TRANSLATION_ENGINES:
+            if key not in seen_engine_keys:
+                engines.append((key, display))
+        for key, display in engines:
+            self.trans_engine.addItem(display)
+            self._engine_key_map[display] = key
+        self.trans_engine.setCurrentIndex(0)
+    
+    def _get_engine_key(self, display_name: str) -> str:
+        """Convert engine display name back to engine key."""
+        return self._engine_key_map.get(display_name, display_name)
     
     # ── Theme ───────────────────────────────────────────────────
     
@@ -282,9 +325,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             src_language=self.source_language_dropdown.currentText(),
             dst_language=self.target_language_dropdown.currentText(),
             model_size=self.model_size_dropdown.currentText(),
-            translate_engine=self.target_engine.currentText(),
+            translate_engine=self._get_engine_key(self.target_engine.currentText()),
             volume=self.boostSlider.value(),
         )
+
+        if args.translate_engine not in ("google", "whisper") and not self.mlaas_config.is_configured():
+            QMessageBox.warning(self, "No API Key", "MLAAS API key not found. Add MLAAS_API to your .env file.")
+            return
         
         self.subtitle_thread = SubtitleThread(args)
         self.subtitle_thread.task_start.connect(self._on_task_start)
@@ -403,9 +450,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         
         src = self._get_lang_code(self.trans_src_lang.currentText())
         dst = self._get_lang_code(self.trans_tgt_lang.currentText())
-        engine = self.trans_engine.currentText()
+        engine = self._get_engine_key(self.trans_engine.currentText())
         
-        if engine == "mlaas" and not self.mlaas_config.is_configured():
+        if engine != "google" and not self.mlaas_config.is_configured():
             QMessageBox.warning(self, "No API Key", "MLAAS API key not found. Add MLAAS_API to your .env file.")
             return
         

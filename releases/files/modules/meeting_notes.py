@@ -13,6 +13,9 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
 
+APPLICATION_NAME = "DogeAutoSub"
+
+
 @dataclass
 class SpeakerBlock:
     """A single block of speech from a meeting transcript."""
@@ -369,6 +372,7 @@ def summarize_with_llm(
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {config.api_key}",
+            "x-application-name": APPLICATION_NAME,
         }
         
         # Ensure URL ends with /chat/completions

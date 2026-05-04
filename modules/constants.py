@@ -115,3 +115,16 @@ LANGUAGE_CODES_AI = [
 ]
 
 MODEL_TYPES = ["tiny", "base", "small", "medium", "large", "large-v3", "turbo", "distil-large-v3"]
+
+# Translation engine definitions: (engine_key, display_name)
+# engine_key is used internally by the backend; display_name is shown in the UI dropdown.
+TRANSLATION_ENGINES = [
+    ("claude-sonnet-4", "Claude Sonnet 4 (MLAAS)"),
+    ("gpt-4o-mini", "GPT-4o Mini (OpenAI)"),
+    ("google", "Google Translate"),
+]
+
+# Engines available only on the Subtitles tab (not Translate File tab)
+TRANSLATION_ENGINES_SUBTITLE_ONLY = [
+    ("whisper", "Whisper (English only)"),
+]
