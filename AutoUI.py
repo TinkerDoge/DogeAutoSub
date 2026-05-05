@@ -177,6 +177,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.mascot = MascotWidget(self.mascotHost, icons_root=_icons_root)
         self.mascotHost.layout().insertWidget(1, self.mascot)
         self.mascot.set_idle("subtitles")
+        # Backward-compat aliases — older code paths (pre-2.4.0) reference
+        # statusImage and speechBubble which no longer exist as widgets.
+        # Aliasing them to the new mascot/funNoticeLabel makes those calls
+        # no-ops or cleanly forward to the new equivalents.
+        self.statusImage = self.mascot
+        if hasattr(self, "funNoticeLabel"):
+            self.speechBubble = self.funNoticeLabel
 
         # ── Status bar ──────────────────────────────────────────────────
         self.statusBarVersion.setText(f"v{APP_VERSION}")

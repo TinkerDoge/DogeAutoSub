@@ -64,6 +64,19 @@ datas = [
     ('modules/styleSheetDark.css', 'modules'),
     ('modules/styleSheetLight.css', 'modules'),
 
+    # New UI modules (v2.4.0 redesign)
+    ('modules/theme_tokens.py', 'modules'),
+    ('modules/eta_tracker.py', 'modules'),
+    ('modules/phase_strip.py', 'modules'),
+    ('modules/stripe_widget.py', 'modules'),
+    ('modules/palette_menu.py', 'modules'),
+    ('modules/mascot.py', 'modules'),
+    ('modules/toast.py', 'modules'),
+    ('modules/log_panel.py', 'modules'),
+    ('modules/log_writer.py', 'modules'),
+    ('modules/animations.py', 'modules'),
+    ('modules/splash.py', 'modules'),
+
     # FFmpeg binaries
     ('modules/ffmpeg', 'modules/ffmpeg'),
 
@@ -126,7 +139,12 @@ updatable_modules = {
     'modules.faster_whisper_engine', 'modules.chunk_processor',
     'modules.marian_translator', 'modules.meeting_notes',
     'modules.mlaas_client', 'modules.updater',
-    'modules.subtitle_thread', 'modules.meeting_notes_thread', 'modules.translate_thread'
+    'modules.subtitle_thread', 'modules.meeting_notes_thread', 'modules.translate_thread',
+    # v2.4.0 UI redesign modules
+    'modules.theme_tokens', 'modules.eta_tracker', 'modules.phase_strip',
+    'modules.stripe_widget', 'modules.palette_menu', 'modules.mascot',
+    'modules.toast', 'modules.log_panel', 'modules.log_writer',
+    'modules.animations', 'modules.splash',
 }
 a.pure = [entry for entry in a.pure if entry[0] not in updatable_modules]
 
@@ -143,7 +161,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,          # Temporary change to capture crash output
+    console=False,          # Temporary change to capture crash output
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
