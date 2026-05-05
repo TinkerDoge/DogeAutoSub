@@ -766,13 +766,33 @@ if __name__ == '__main__':
         app = QApplication(sys.argv)
         app.setApplicationName("DogeAutoSub")
         app.setApplicationVersion("2.0")
-        
+
+        _no_splash = "--no-splash" in sys.argv
+        _splash = None
+        if not _no_splash:
+            try:
+                from modules.splash import BootSplash
+                _splash = BootSplash()
+                _splash.show()
+                _splash.set_progress(10, "Initialising…")
+            except Exception as _e:
+                print(f"Splash skipped: {_e}")
+                _splash = None
+
+        if _splash:
+            _splash.set_progress(40, "Loading UI…")
+
         window = DogeAutoSub()
+
+        if _splash:
+            _splash.set_progress(90, "Ready!")
+            _splash.fade_close()
+
         window.show()
-        
+
         exit_code = app.exec()
         sys.exit(exit_code)
-        
+
     except Exception as e:
         print(f"Fatal error: {e}")
         import traceback
