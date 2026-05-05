@@ -97,26 +97,35 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.notes_thread = None
         self.translate_thread = None
         self.current_theme = "Dark"
-        
+
         # ── Set window icon ─────────────────────────────────────
         icon_path = os.path.join(SCRIPT_DIR, "icons", "favicon.png")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-        
-        # ── Pre-load theme stylesheets (avoid disk IO per toggle) ─
-        self._theme_css = {}
-        for theme_name, filename in (("Dark", "styleSheetDark.css"), ("Light", "styleSheetLight.css")):
-            path = os.path.join(SCRIPT_DIR, "modules", filename)
-            if os.path.exists(path):
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        self._theme_css[theme_name] = f.read()
-                except Exception as e:
-                    print(f"Could not load theme {theme_name}: {e}")
 
-        # ── Load dark theme ─────────────────────────────────────
-        self._load_theme("Dark")
-        
+        # ── Palette ─────────────────────────────────────────────────────
+        from modules.theme_tokens import build_stylesheet, DEFAULT_PALETTE
+        from PySide6.QtCore import QSettings
+        _settings = QSettings("DogeAutoSub", "ui")
+        # One-shot migration: drop old theme/dark key
+        if _settings.contains("theme/dark"):
+            _settings.remove("theme/dark")
+        _palette_id = _settings.value("theme/palette", DEFAULT_PALETTE, type=str)
+        QApplication.instance().setStyleSheet(build_stylesheet(_palette_id))
+        self.paletteStripe.set_palette(_palette_id)
+        self.paletteMenuButton.select(_palette_id)
+        self.phaseStrip.set_accent_color(self._accent_for(_palette_id))
+        self.paletteMenuButton.palette_selected.connect(self._on_palette_changed)
+
+        # ── Frameless window controls ───────────────────────────────────
+        self.closeBtn.clicked.connect(self.close)
+        self.minBtn.clicked.connect(self.showMinimized)
+        self.zoomBtn.clicked.connect(self._toggle_zoom)
+        self._drag_origin = None
+        self.fauxTitleBar.mousePressEvent = self._titlebar_press
+        self.fauxTitleBar.mouseMoveEvent = self._titlebar_move
+        self.fauxTitleBar.mouseReleaseEvent = self._titlebar_release
+
         # ── Logging ─────────────────────────────────────────────
         from modules.log_writer import LogWriter
         from modules.log_panel import LogPanel, PIPELINE_SUBTITLES, PIPELINE_NOTES, PIPELINE_TRANSLATE
@@ -139,19 +148,33 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             "translate": PIPELINE_TRANSLATE,
         }
 
-        # ── Mascot ───────────────────────────────────────────────
+        # ── Sidebar workflow switching ──────────────────────────────────
+        self._sidebar_items = {
+            "subtitles": self.sidebarSubtitlesItem,
+            "notes":     self.sidebarNotesItem,
+            "translate": self.sidebarTranslateItem,
+        }
+        for name, btn in self._sidebar_items.items():
+            btn.clicked.connect(lambda _checked=False, n=name: self._activate_workflow(n))
+        self._activate_workflow("subtitles")
+
+        # ── Mascot widget ───────────────────────────────────────────────
         from modules.mascot import MascotWidget
-        mascot_parent = self.statusImage.parentWidget()
-        mascot_layout = mascot_parent.layout() if mascot_parent else None
-        if mascot_layout is not None:
-            midx = mascot_layout.indexOf(self.statusImage)
-            mascot_layout.removeWidget(self.statusImage)
-            self.statusImage.deleteLater()
-            self.statusImage = MascotWidget(bubble_target=self.speechBubble)
-            mascot_layout.insertWidget(midx, self.statusImage)
-        else:
-            # Fallback: just replace in-place
-            self.statusImage = MascotWidget(bubble_target=self.speechBubble)
+        _icons_root = os.path.join(SCRIPT_DIR, "icons")
+        self.mascot = MascotWidget(self.mascotHost, icons_root=_icons_root)
+        self.mascotHost.layout().insertWidget(1, self.mascot)
+        self.mascot.set_idle("subtitles")
+
+        # ── Status bar ──────────────────────────────────────────────────
+        self.statusBarVersion.setText(f"v{APP_VERSION}")
+        try:
+            if TORCH_AVAILABLE and torch.cuda.is_available():
+                self.statusBarGpu.setText(f"GPU: {torch.cuda.get_device_name(0)}")
+            else:
+                self.statusBarGpu.setText("GPU: CPU only")
+        except Exception:
+            self.statusBarGpu.setText("GPU: —")
+        self.statusBarReady.setText("● Ready")
 
         # ── Card hover lift ───────────────────────────────────────
         from modules.animations import lift_on_hover
@@ -189,14 +212,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.openFolderBtn.clicked.connect(self._open_output_folder)
         
         # Meeting notes signals
-        self.selectDocxBtn.clicked.connect(self._select_docx)
+        if hasattr(self, "selectDocxBtn"):
+            self.selectDocxBtn.clicked.connect(self._select_docx)
         self.generateNotesBtn.clicked.connect(self._generate_meeting_notes)
         self.saveNotesBtn.clicked.connect(self._save_meeting_notes)
-        
+
         # Translation tab signals
-        self.selectTransFileBtn.clicked.connect(self._select_trans_file)
+        if hasattr(self, "selectTransFileBtn"):
+            self.selectTransFileBtn.clicked.connect(self._select_trans_file)
         self.translateFileBtn.clicked.connect(self._start_file_translation)
-        self.saveTransBtn.clicked.connect(self._save_translation)
+        if hasattr(self, "saveTransBtn"):
+            self.saveTransBtn.clicked.connect(self._save_translation)
 
         # Bearer token UI signals
         self.getTokenBtn.clicked.connect(self._open_token_page)
@@ -210,7 +236,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         
         # ── Set window title with version ───────────────────
         self.setWindowTitle(f"DogeAutoSub v{APP_VERSION}")
-        self.versionLabel.setText(f"v{APP_VERSION}")
+        if hasattr(self, "versionLabel"):
+            self.versionLabel.setText(f"v{APP_VERSION}")
         
         # ── View menu ─────────────────────────────────────────────
         self._setup_view_menu()
@@ -296,42 +323,32 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.target_engine.setCurrentIndex(0)
 
         # Translation tab dropdowns — reuse same languages
-        self.trans_src_lang.clear()
-        self.trans_tgt_lang.clear()
-        self.trans_src_lang.addItem("Auto")
-        for code, name in LANGUAGE_CODES_AI:
-            if code != "auto":
-                self.trans_src_lang.addItem(name)
-                self.trans_tgt_lang.addItem(name)
-        self.trans_src_lang.setCurrentText("Auto")
-        self.trans_tgt_lang.setCurrentText("Vietnamese")
+        if hasattr(self, "trans_src_lang") and hasattr(self, "trans_tgt_lang"):
+            self.trans_src_lang.clear()
+            self.trans_tgt_lang.clear()
+            self.trans_src_lang.addItem("Auto")
+            for code, name in LANGUAGE_CODES_AI:
+                if code != "auto":
+                    self.trans_src_lang.addItem(name)
+                    self.trans_tgt_lang.addItem(name)
+            self.trans_src_lang.setCurrentText("Auto")
+            self.trans_tgt_lang.setCurrentText("Vietnamese")
 
         # Translation tab engine (no whisper)
-        self.trans_engine.clear()
-        engines = list(dynamic_engines)
-        for key, display in TRANSLATION_ENGINES:
-            if key not in seen_engine_keys:
-                engines.append((key, display))
-        for key, display in engines:
-            self.trans_engine.addItem(display)
-            self._engine_key_map[display] = key
-        self.trans_engine.setCurrentIndex(0)
+        if hasattr(self, "trans_engine"):
+            self.trans_engine.clear()
+            engines = list(dynamic_engines)
+            for key, display in TRANSLATION_ENGINES:
+                if key not in seen_engine_keys:
+                    engines.append((key, display))
+            for key, display in engines:
+                self.trans_engine.addItem(display)
+                self._engine_key_map[display] = key
+            self.trans_engine.setCurrentIndex(0)
     
     def _get_engine_key(self, display_name: str) -> str:
         """Convert engine display name back to engine key."""
         return self._engine_key_map.get(display_name, display_name)
-    
-    # ── Theme ───────────────────────────────────────────────────
-    
-    def _load_theme(self, theme: str):
-        css = self._theme_css.get(theme)
-        if css is not None:
-            self.setStyleSheet(css)
-        self.current_theme = theme
-    
-    def _toggle_theme(self):
-        new_theme = "Light" if self.current_theme == "Dark" else "Dark"
-        self._load_theme(new_theme)
     
     # ── File Selection ──────────────────────────────────────────
     
@@ -394,12 +411,27 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.subtitle_thread = SubtitleThread(args)
         self.subtitle_thread.task_start.connect(self._on_task_start)
         self.subtitle_thread.task_complete.connect(self._on_task_complete)
-        self.subtitle_thread.progress_update.connect(self.progressBar.setValue)
         self.subtitle_thread.status_update.connect(self.statusLabel.setText)
-        self.subtitle_thread.duration_update.connect(self.etaLabel.setText)
         self.logPanel.set_pipeline(self._PIPELINES["subtitles"])
         self.logPanel.clear()
         self.subtitle_thread.log_event.connect(self._on_log_event)
+
+        # ── EtaTracker + PhaseStrip ─────────────────────────────────────
+        from modules.eta_tracker import EtaTracker
+        self._eta = EtaTracker(workflow="subtitles")
+        SUBTITLE_PHASES = ["Preparing", "Reading video", "Transcribing", "Translating", "Saving"]
+        self.phaseStrip.set_phases(SUBTITLE_PHASES)
+        self._eng_to_phase = {
+            "Load model":    "Preparing",
+            "Extract audio": "Reading video",
+            "Transcribe":    "Transcribing",
+            "Translate":     "Translating",
+            "Save SRT":      "Saving",
+        }
+        self.subtitle_thread.log_event.connect(self._on_log_event_for_eta)
+        self.subtitle_thread.progress_update.connect(self._on_progress_update_for_eta)
+        self.subtitle_thread.duration_update.connect(lambda _msg: None)
+
         self.subtitle_thread.start()
     
     def _on_task_start(self):
@@ -447,6 +479,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             _QT.singleShot(400, lambda: self.actionCard.setStyleSheet(original))
         except Exception:
             pass
+        try:
+            from modules.toast import success_with_doge
+            _base = os.path.basename(self.input_file_path or "")
+            _toast = success_with_doge(self, "Done", filename=_base)
+            _toast.show_toast()
+        except Exception:
+            pass
 
     def _on_log_event(self, evt: dict):
         kind = evt.get("kind")
@@ -480,7 +519,111 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 Toast(self, msg, kind="error", duration_ms=4000).show_toast()
             except Exception:
                 pass
-    
+
+    # ── Palette ──────────────────────────────────────────────────
+
+    def _toggle_theme(self):
+        """Legacy no-op: theme toggle replaced by palette menu."""
+        pass
+
+    @staticmethod
+    def _accent_for(palette_id: str) -> str:
+        from modules.theme_tokens import PALETTES
+        return PALETTES[palette_id]["accent"]
+
+    def _on_palette_changed(self, palette_id: str):
+        from modules.theme_tokens import build_stylesheet
+        from PySide6.QtCore import QSettings
+        QApplication.instance().setStyleSheet(build_stylesheet(palette_id))
+        self.paletteStripe.set_palette(palette_id)
+        self.phaseStrip.set_accent_color(self._accent_for(palette_id))
+        QSettings("DogeAutoSub", "ui").setValue("theme/palette", palette_id)
+
+    # ── Frameless window helpers ─────────────────────────────────
+
+    def _toggle_zoom(self):
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def _titlebar_press(self, ev):
+        from PySide6.QtCore import Qt
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self._drag_origin = ev.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            ev.accept()
+
+    def _titlebar_move(self, ev):
+        from PySide6.QtCore import Qt
+        if self._drag_origin is not None and ev.buttons() & Qt.MouseButton.LeftButton:
+            self.move(ev.globalPosition().toPoint() - self._drag_origin)
+            ev.accept()
+
+    def _titlebar_release(self, ev):
+        self._drag_origin = None
+
+    # ── Sidebar ──────────────────────────────────────────────────
+
+    def _activate_workflow(self, name: str):
+        index = {"subtitles": 0, "notes": 1, "translate": 2}.get(name, 0)
+        self.workflowStack.setCurrentIndex(index)
+        for n, btn in self._sidebar_items.items():
+            btn.setProperty("active", "true" if n == name else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+        if hasattr(self, "mascot") and self.mascot is not None:
+            self.mascot.set_idle(name)
+        self._render_recents(name)
+
+    def _render_recents(self, workflow: str):
+        pass  # implemented in Task 11
+
+    # ── EtaTracker helpers ───────────────────────────────────────
+
+    def _on_log_event_for_eta(self, evt: dict):
+        kind = evt.get("kind")
+        eng_step = evt.get("step")
+        phase = self._eng_to_phase.get(eng_step) if eng_step else None
+        if kind == "step_start" and phase:
+            self._eta.start_phase(phase)
+            self.phaseStrip.set_active(phase)
+            if hasattr(self, "mascot") and self.mascot is not None:
+                self.mascot.set_phase(phase)
+            self._refresh_status_line()
+        elif kind == "step_done" and phase:
+            self._eta.complete_phase(phase)
+            self.phaseStrip.mark_done(phase)
+            self._refresh_status_line()
+        elif kind == "step_error" and phase:
+            self.phaseStrip.mark_error(phase)
+            self.statusLabel.setText(f"{phase} · failed")
+            self.statusLabel.setStyleSheet("color:#ff6b6b;")
+            try:
+                if hasattr(self, "logPanel"):
+                    self.logPanel.set_filter("events")
+                    if not self.logPanel._console_visible:
+                        self.logPanel.toggle_console()
+            except Exception:
+                pass
+
+    def _on_progress_update_for_eta(self, value: int):
+        try:
+            self._eta.update_position(float(value), 100.0)
+        except Exception:
+            pass
+        self._refresh_status_line()
+        try:
+            self.progressBar.setValue(int(self._eta.overall_fraction() * 100))
+        except Exception:
+            self.progressBar.setValue(value)
+
+    def _refresh_status_line(self):
+        active = self.phaseStrip.active_phase()
+        if active:
+            self.statusLabel.setText(active)
+            self.statusLabel.setStyleSheet("")
+        self.etaLabel.setText(self._eta.current_eta_string())
+
     # ── Meeting Notes ───────────────────────────────────────────
     
     def _select_docx(self):
