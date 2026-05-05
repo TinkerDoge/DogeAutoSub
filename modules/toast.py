@@ -62,3 +62,15 @@ class Toast(QFrame):
         a.setEndValue(QPoint(self.x(), -self.height()))
         a.finished.connect(self.deleteLater)
         a.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
+
+def success_with_doge(parent: "QWidget", message: str, *, filename: str = "",
+                      duration_ms: int = 4000) -> Toast:
+    """Build a success toast mentioning the filename. Doge copy gated by QSettings."""
+    from PySide6.QtCore import QSettings
+    tips = QSettings("DogeAutoSub", "ui").value("view/dogeTips", True, type=bool)
+    if filename:
+        body = f"{message} · {filename}" if not tips else f"{message} · {filename} · such done"
+    else:
+        body = message if not tips else f"{message} · much wow"
+    return Toast(parent, body, kind="success", duration_ms=duration_ms)
