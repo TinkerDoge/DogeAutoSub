@@ -1,6 +1,30 @@
 # DogeAutoSub Installation Guide
 
-## Prerequisites
+## End-Users — Pre-built install (recommended)
+
+You don't need Python. You just need the LAN update server reachable from your PC.
+
+1. Make sure someone on the LAN is running `python serve_updates.py` on the host machine (default `http://dogeautosub.local:8100`).
+2. Download `Install_DogeAutoSub.bat` from this repo (or copy it from a teammate's machine).
+3. Double-click it. The script will:
+   - Probe the update server and read the latest version.
+   - Download the full bundle `DogeAutoSub_v<ver>_full.zip`.
+   - Extract it to `%USERPROFILE%\DogeAutoSub`.
+   - Optionally place a desktop shortcut.
+   - Optionally launch the app.
+
+To override the server or install dir, run from a command prompt:
+```
+Install_DogeAutoSub.bat http://192.168.1.50:8100  D:\Apps\DogeAutoSub
+```
+
+After install, future updates happen in-app via the auto-updater — you don't need to re-run the installer.
+
+---
+
+## Developers — Run from source
+
+### Prerequisites
 - Python 3.11
 - FFmpeg (included in the project under modules/ffmpeg/)
 
