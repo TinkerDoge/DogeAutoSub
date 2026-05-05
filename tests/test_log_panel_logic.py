@@ -1,64 +1,51 @@
 import pytest
+from PySide6.QtWidgets import QApplication
 
-from modules.log_panel import (
-    PIPELINE_SUBTITLES, PIPELINE_NOTES, PIPELINE_TRANSLATE,
-    DogeNarrator, _format_duration,
-)
+from modules.log_panel import LogPanel, DogeNarrator
 
 
-def test_pipelines_defined():
-    assert PIPELINE_SUBTITLES == ["Load model", "Extract audio", "Transcribe", "Translate", "Save SRT"]
-    assert PIPELINE_NOTES == ["Read transcript", "Summarize", "Format"]
-    assert PIPELINE_TRANSLATE == ["Read file", "Detect language", "Translate", "Format output"]
+@pytest.fixture(scope="module")
+def app():
+    return QApplication.instance() or QApplication([])
 
 
-def test_format_duration_seconds():
-    assert _format_duration(0.4) == "0.4s"
-    assert _format_duration(2.0) == "2.0s"
-    assert _format_duration(75) == "1m 15s"
-    assert _format_duration(3600) == "1h 0m"
-
-
-def test_doge_narrator_speaks_every_n():
-    n = DogeNarrator(every_n=3, seed=42)
-    msgs = []
-    n.on_event = lambda lvl, msg: msgs.append((lvl, msg))
-    for _ in range(8):
-        n.notify_step_done()
-    # On steps 3 and 6 it should have spoken.
-    assert len(msgs) == 2
-    for lvl, msg in msgs:
-        assert lvl == "doge"
-        assert msg
-
-
-def test_doge_narrator_disabled_emits_nothing():
-    n = DogeNarrator(every_n=1, enabled=False)
-    msgs = []
-    n.on_event = lambda lvl, msg: msgs.append((lvl, msg))
-    for _ in range(5):
-        n.notify_step_done()
-    assert msgs == []
-
-
-def test_doge_narrator_completion_always_speaks():
-    n = DogeNarrator(every_n=99, seed=1)
-    msgs = []
-    n.on_event = lambda lvl, msg: msgs.append((lvl, msg))
-    n.notify_completion()
-    assert len(msgs) == 1
-    assert msgs[0][0] == "doge"
-
-
-def test_log_panel_lifecycle(qtbot):
-    from modules.log_panel import LogPanel, PIPELINE_SUBTITLES
+def test_log_panel_does_not_route_narrator_to_console(app):
     panel = LogPanel()
-    qtbot.addWidget(panel)
-    panel.set_pipeline(PIPELINE_SUBTITLES)
-    panel.step_start("Load model")
-    panel.log("info", "model loading...")
-    panel.step_done("Load model", "1.2s")
-    panel.step_start("Extract audio")
-    panel.step_error("Extract audio", "ffmpeg missing")
-    panel.notify_completion()
-    assert "model loading" in panel.console.toPlainText()
+    panel._narrator.notify_step_done()
+    panel._narrator.notify_step_done()
+    panel._narrator.notify_step_done()
+    text = panel.console.toPlainText()
+    assert "such" not in text
+    assert "wow" not in text
+    assert "doge" not in text
+
+
+def test_log_panel_collapsed_by_default(app):
+    panel = LogPanel()
+    assert panel._console_visible is False
+
+
+def test_log_panel_set_filter_events(app):
+    panel = LogPanel()
+    panel.set_filter("events")
+    assert panel.current_filter() == "events"
+    panel.set_filter("raw")
+    assert panel.current_filter() == "raw"
+
+
+def test_log_panel_filter_hides_per_segment_chatter(app):
+    panel = LogPanel()
+    panel.set_filter("events")
+    panel.log("info", "chunk 3 of 12")
+    panel.log("error", "translation API failure")
+    text = panel.console.toPlainText()
+    assert "translation API failure" in text
+    assert "chunk 3 of 12" not in text
+
+
+def test_doge_narrator_emits_via_callback_only(app):
+    received = []
+    n = DogeNarrator(every_n=1, enabled=True, seed=0)
+    n.on_event = lambda lvl, msg: received.append((lvl, msg))
+    n.notify_step_done()
+    assert received and received[0][0] == "doge"

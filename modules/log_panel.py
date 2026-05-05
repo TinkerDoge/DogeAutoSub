@@ -185,7 +185,7 @@ class LogPanel(QFrame):
         self._steps: dict[str, _StepRow] = {}
         self._log_writer = log_writer
         self._narrator = narrator or DogeNarrator()
-        self._narrator.on_event = lambda lvl, msg: self.log(lvl, msg)
+        # Narrator output is routed externally (mascot/toast). Never wired here.
         self._console_visible = True
 
         outer = QVBoxLayout(self)
@@ -222,10 +222,13 @@ class LogPanel(QFrame):
         self.toggle.mousePressEvent = lambda e: self.toggle_console()
         outer.addWidget(self.toggle)
 
-        # Restore persisted state
+        # Default closed; open only if user explicitly expanded it previously.
+        self._console_visible = True  # set True so first toggle → False
+        self.toggle_console()
         settings = QSettings("DogeAutoSub", "ui")
-        if settings.value("log/console_open", True, type=bool) is False:
+        if settings.value("log/console_open", False, type=bool) is True:
             self.toggle_console()
+        self.__post_init_filter()
 
     # ── Public API ─────────────────────────────────────────────────────────
     def set_pipeline(self, steps: list[str]) -> None:
@@ -267,20 +270,42 @@ class LogPanel(QFrame):
 
     def log(self, level: str, text: str) -> None:
         ts = time.strftime("%H:%M:%S")
-        color = LEVEL_COLORS.get(level, "#cccccc")
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor(color))
-        cursor = self.console.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        cursor.insertText(f"[{ts}] {text}\n", fmt)
-        self.console.setTextCursor(cursor)
-        self.console.ensureCursorVisible()
         if self._log_writer:
             try:
                 self._log_writer.write(level, text)
             except Exception:
                 pass
+        if self._passes_filter(level, text):
+            color = LEVEL_COLORS.get(level, "#cccccc")
+            fmt = QTextCharFormat()
+            fmt.setForeground(QColor(color))
+            cursor = self.console.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.insertText(f"[{ts}] {text}\n", fmt)
+            self.console.setTextCursor(cursor)
+            self.console.ensureCursorVisible()
         self._emit("log", level=level, text=text)
+
+    _PER_SEGMENT_TOKENS = ("chunk ", "segment ", "page ")
+
+    def __post_init_filter(self):
+        self._filter = "events"
+
+    def set_filter(self, kind: str) -> None:
+        if kind not in ("events", "raw"):
+            return
+        self._filter = kind
+
+    def current_filter(self) -> str:
+        return getattr(self, "_filter", "events")
+
+    def _passes_filter(self, level: str, text: str) -> bool:
+        if self.current_filter() == "raw":
+            return True
+        if level in ("warn", "error"):
+            return True
+        lowered = text.lower()
+        return not any(tok in lowered for tok in self._PER_SEGMENT_TOKENS)
 
     def clear(self) -> None:
         self.console.clear()
