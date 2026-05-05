@@ -299,9 +299,13 @@ class LogPanel(QFrame):
     def current_filter(self) -> str:
         return getattr(self, "_filter", "events")
 
+    _SUPPRESSED_LEVELS = {"doge"}
+
     def _passes_filter(self, level: str, text: str) -> bool:
         if self.current_filter() == "raw":
             return True
+        if level in self._SUPPRESSED_LEVELS:
+            return False
         if level in ("warn", "error"):
             return True
         lowered = text.lower()
