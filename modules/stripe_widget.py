@@ -16,7 +16,8 @@ class StripeWidget(QFrame):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("paletteStripe")
-        self.setFixedHeight(self.HEIGHT)
+        self.setMinimumHeight(self.HEIGHT)
+        self.setMaximumHeight(self.HEIGHT)
         self._palette_id = DEFAULT_PALETTE
         self._bands: list[str] = list(PALETTES[DEFAULT_PALETTE]["stripe"])
 

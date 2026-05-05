@@ -64,7 +64,7 @@ def build_stylesheet(palette_id: str) -> str:
 
 _TEMPLATE = """
 * {{
-    font-family: -apple-system, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
     color: {text_primary};
 }}
 
@@ -88,9 +88,24 @@ QFrame#fauxTitleBar {{
 
 QLabel#fauxTitleText {{
     color: {text_primary};
-    font-size: 12px;
+    font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;
+    font-size: 13px;
     font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
     background: transparent;
+}}
+
+QFrame#statusBar {{
+    background: {sidebar_bg};
+    border-top: 1px solid {border};
+}}
+
+QFrame#statusBar QLabel {{
+    color: {text_tertiary};
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
 }}
 
 QFrame#sidebar {{
@@ -100,10 +115,11 @@ QFrame#sidebar {{
 
 QLabel#sidebarSectionLabel {{
     color: {text_tertiary};
-    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
-    font-size: 9px;
-    letter-spacing: 1.4px;
-    padding: 8px 10px 4px 10px;
+    font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 12px 8px 4px 8px;
     background: transparent;
 }}
 
@@ -111,19 +127,23 @@ QPushButton#sidebarItem {{
     background: transparent;
     color: {text_secondary};
     border: none;
-    border-radius: 6px;
-    padding: 7px 10px;
+    border-radius: 4px;
+    padding: 6px 10px 6px 14px;
     text-align: left;
+    font-family: "Cascadia Mono", "Consolas", monospace;
     font-size: 12px;
+    font-weight: 500;
 }}
 QPushButton#sidebarItem:hover {{
     background: {border};
     color: {text_primary};
 }}
 QPushButton#sidebarItem[active="true"] {{
-    background: {accent};
-    color: {accent_text};
-    font-weight: 600;
+    background: {border};
+    color: {accent};
+    font-weight: 700;
+    border-left: 2px solid {accent};
+    padding-left: 12px;
 }}
 
 QFrame#card {{
@@ -133,24 +153,31 @@ QFrame#card {{
 }}
 
 QLabel#sectionTitle {{
-    color: {text_tertiary};
-    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
-    font-size: 9px;
-    letter-spacing: 1.4px;
+    color: {accent};
+    font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
     background: transparent;
+    padding: 0;
 }}
 
 QLabel#statusLabel {{
     color: {text_primary};
+    font-family: "Cascadia Mono", "Consolas", monospace;
     font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     background: transparent;
 }}
 
 QLabel#etaLabel {{
-    color: {text_secondary};
-    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
-    font-size: 10px;
+    color: {accent};
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     background: transparent;
 }}
 
@@ -209,28 +236,39 @@ QPushButton#startButton, QPushButton#generateNotesBtn, QPushButton#translateFile
     background: {accent};
     color: {accent_text};
     border: 1px solid {accent};
+    border-radius: 4px;
+    font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;
     font-weight: 700;
-    min-height: 30px;
-    padding: 7px 18px;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    min-height: 32px;
+    padding: 8px 24px;
 }}
 QPushButton#startButton:hover, QPushButton#generateNotesBtn:hover, QPushButton#translateFileBtn:hover {{
-    background: {accent};
-    border-color: {text_primary};
+    background: {accent_text};
+    color: {accent};
+    border-color: {accent};
 }}
 
 QComboBox, QLineEdit, QTextEdit, QPlainTextEdit {{
     background: {input_bg};
     color: {text_primary};
     border: 1px solid {border};
-    border-radius: 6px;
-    padding: 5px 8px;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-family: "Cascadia Mono", "Consolas", monospace;
     font-size: 12px;
-    min-height: 20px;
+    min-height: 22px;
     selection-background-color: {accent};
     selection-color: {accent_text};
 }}
-QComboBox:hover, QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
+QComboBox:hover {{
+    border-color: {border_strong};
+}}
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
     border-color: {accent};
+    background: {window_bg};
 }}
 
 QComboBox QAbstractItemView {{

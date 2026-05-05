@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
         return lbl
 
     def _section_title(self, text):
-        lbl = QLabel(text.upper())
+        lbl = QLabel(f"▍ {text.upper()}")
         lbl.setObjectName("sectionTitle")
         return lbl
 
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         return f
 
     def _sidebar_section(self, text):
-        lbl = QLabel(text)
+        lbl = QLabel(f"── {text} ──")
         lbl.setObjectName("sidebarSectionLabel")
         return lbl
 
@@ -97,7 +97,7 @@ class Ui_MainWindow(object):
         tb.addWidget(self.titleBarIcon)
         tb.addSpacing(6)
 
-        self.fauxTitleText = QLabel("DogeAutoSub")
+        self.fauxTitleText = QLabel("DOGE · AUTO · SUB")
         self.fauxTitleText.setObjectName("fauxTitleText")
         self.fauxTitleText.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tb.addWidget(self.fauxTitleText, 1)
@@ -204,14 +204,14 @@ class Ui_MainWindow(object):
     def _build_subtitles_pane(self):
         pane = QWidget()
         lay = QVBoxLayout(pane)
-        lay.setContentsMargins(14, 14, 14, 14)
-        lay.setSpacing(10)
+        lay.setContentsMargins(14, 12, 14, 8)
+        lay.setSpacing(8)
 
         # File card
         fileCard = self._card()
         flay = QVBoxLayout(fileCard)
-        flay.setContentsMargins(12, 10, 12, 10)
-        flay.setSpacing(6)
+        flay.setContentsMargins(12, 8, 12, 8)
+        flay.setSpacing(4)
         flay.addWidget(self._section_title("SOURCE"))
         btnRow = QHBoxLayout()
         self.selectFileBtn = QPushButton("Select Video File")
@@ -231,8 +231,8 @@ class Ui_MainWindow(object):
         # Settings card
         settingsCard = self._card()
         slay = QVBoxLayout(settingsCard)
-        slay.setContentsMargins(12, 10, 12, 10)
-        slay.setSpacing(8)
+        slay.setContentsMargins(12, 8, 12, 8)
+        slay.setSpacing(6)
         slay.addWidget(self._section_title("LANGUAGES"))
 
         self.model_size_dropdown = QComboBox()
@@ -258,7 +258,7 @@ class Ui_MainWindow(object):
         self.target_language_dropdown.setObjectName("tgtLangDropdown")
         langGrid.addWidget(self.target_language_dropdown, 1, 1)
         slay.addLayout(langGrid)
-        slay.addSpacing(6)
+        slay.addSpacing(2)
 
         slay.addWidget(self._section_title("ENGINE"))
         engGrid = QGridLayout()
@@ -283,13 +283,13 @@ class Ui_MainWindow(object):
         volRow.addWidget(self.boostLabel)
         engGrid.addLayout(volRow, 1, 1)
         slay.addLayout(engGrid)
-        slay.addSpacing(6)
+        slay.addSpacing(2)
 
         # MLAAS sub-card
         mlaasFrame = self._card()
         mlay = QVBoxLayout(mlaasFrame)
-        mlay.setContentsMargins(10, 8, 10, 8)
-        mlay.setSpacing(4)
+        mlay.setContentsMargins(10, 6, 10, 6)
+        mlay.setSpacing(3)
         mlaasTop = QHBoxLayout()
         mlaasTop.addWidget(self._section_title("MLAAS API"))
         self.mlaasStatusLabel = QLabel("Loading...")
@@ -313,8 +313,8 @@ class Ui_MainWindow(object):
         # Action card
         actionCard = self._card()
         alay = QVBoxLayout(actionCard)
-        alay.setContentsMargins(12, 10, 12, 10)
-        alay.setSpacing(8)
+        alay.setContentsMargins(12, 8, 12, 8)
+        alay.setSpacing(6)
 
         self.startButton = QPushButton("Start Processing")
         self.startButton.setObjectName("startButton")
@@ -369,13 +369,13 @@ class Ui_MainWindow(object):
     def _build_notes_pane(self):
         pane = QWidget()
         lay = QVBoxLayout(pane)
-        lay.setContentsMargins(14, 14, 14, 14)
-        lay.setSpacing(10)
+        lay.setContentsMargins(14, 12, 14, 8)
+        lay.setSpacing(8)
 
         card = self._card()
         clay = QVBoxLayout(card)
-        clay.setContentsMargins(12, 10, 12, 10)
-        clay.setSpacing(6)
+        clay.setContentsMargins(12, 8, 12, 8)
+        clay.setSpacing(4)
         clay.addWidget(self._section_title("MEETING TRANSCRIPT"))
         self.uploadDocxBtn = QPushButton("Upload .docx Transcript")
         self.uploadDocxBtn.setObjectName("uploadDocxBtn")
@@ -411,13 +411,13 @@ class Ui_MainWindow(object):
     def _build_translate_pane(self):
         pane = QWidget()
         lay = QVBoxLayout(pane)
-        lay.setContentsMargins(14, 14, 14, 14)
-        lay.setSpacing(10)
+        lay.setContentsMargins(14, 12, 14, 8)
+        lay.setSpacing(8)
 
         card = self._card()
         clay = QVBoxLayout(card)
-        clay.setContentsMargins(12, 10, 12, 10)
-        clay.setSpacing(6)
+        clay.setContentsMargins(12, 8, 12, 8)
+        clay.setSpacing(4)
         clay.addWidget(self._section_title("FILE"))
         self.uploadTransBtn = QPushButton("Upload File (.srt / .docx / .txt)")
         self.uploadTransBtn.setObjectName("uploadTransBtn")

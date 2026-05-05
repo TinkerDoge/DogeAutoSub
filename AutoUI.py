@@ -184,7 +184,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 self.statusBarGpu.setText("GPU: CPU only")
         except Exception:
             self.statusBarGpu.setText("GPU: —")
-        self.statusBarReady.setText("● Ready")
+        self.statusBarReady.setText("READY")
+        # Blinking cursor after the ready text
+        from PySide6.QtCore import QTimer
+        self._cursor_visible = True
+        def _blink_cursor():
+            self._cursor_visible = not self._cursor_visible
+            base = self.statusBarReady.text().rstrip(" ▮")
+            self.statusBarReady.setText(base + (" ▮" if self._cursor_visible else "  "))
+        self._cursor_timer = QTimer(self)
+        self._cursor_timer.timeout.connect(_blink_cursor)
+        self._cursor_timer.start(600)
 
         # (lift_on_hover removed — too distracting)
 
@@ -473,17 +483,40 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.statusImage.set_state("celebrate")
         except Exception:
             pass
-        try:
-            from modules.animations import confetti_burst
-            confetti_burst(self.actionCard)
-            original = self.actionCard.styleSheet()
-            self.actionCard.setStyleSheet(
-                original + " QFrame { border: 2px solid #7ed957; background: #f4fff0; }"
-            )
-            from PySide6.QtCore import QTimer as _QT
-            _QT.singleShot(400, lambda: self.actionCard.setStyleSheet(original))
-        except Exception:
-            pass
+        if False:  # confetti replaced by stripe pulse below
+            try:
+                from modules.animations import confetti_burst
+                confetti_burst(self.actionCard)
+                original = self.actionCard.styleSheet()
+                self.actionCard.setStyleSheet(
+                    original + " QFrame { border: 2px solid #7ed957; background: #f4fff0; }"
+                )
+                from PySide6.QtCore import QTimer as _QT
+                _QT.singleShot(400, lambda: self.actionCard.setStyleSheet(original))
+            except Exception:
+                pass
+        # Stripe pulse (Broadcast Workstation completion signal)
+        from PySide6.QtCore import QPropertyAnimation, QEasingCurve
+        from PySide6.QtCore import QSettings as _QSettings
+        _reduce_motion = _QSettings("DogeAutoSub", "ui").value(
+            "motion/reduce", False, type=bool
+        )
+        if not _reduce_motion:
+            self._stripe_pulse_anim = QPropertyAnimation(self.paletteStripe, b"minimumHeight", self)
+            self._stripe_pulse_anim.setDuration(600)
+            self._stripe_pulse_anim.setKeyValueAt(0.0, 3)
+            self._stripe_pulse_anim.setKeyValueAt(0.5, 10)
+            self._stripe_pulse_anim.setKeyValueAt(1.0, 3)
+            self._stripe_pulse_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._stripe_pulse_anim.start()
+            # Also animate maximumHeight in lockstep so the stripe actually grows
+            self._stripe_pulse_anim2 = QPropertyAnimation(self.paletteStripe, b"maximumHeight", self)
+            self._stripe_pulse_anim2.setDuration(600)
+            self._stripe_pulse_anim2.setKeyValueAt(0.0, 3)
+            self._stripe_pulse_anim2.setKeyValueAt(0.5, 10)
+            self._stripe_pulse_anim2.setKeyValueAt(1.0, 3)
+            self._stripe_pulse_anim2.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._stripe_pulse_anim2.start()
         try:
             from modules.toast import success_with_doge
             _base = os.path.basename(self.input_file_path or "")
