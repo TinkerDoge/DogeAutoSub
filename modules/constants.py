@@ -14,7 +14,7 @@ MODEL_INFO = {
 LANGUAGE_CODES_AI = [
     ("auto", "Auto"),
     ("en", "English"),
-    ("zh", "chinese"),
+    ("zh", "Chinese"),
     ("ja", "Japanese"),
     ("ko", "Korean"),
     ("de", "German"),
@@ -128,3 +128,22 @@ TRANSLATION_ENGINES = [
 TRANSLATION_ENGINES_SUBTITLE_ONLY = [
     ("whisper", "Whisper (English only)"),
 ]
+
+
+# Display order for language dropdowns: priority languages first, then the
+# rest alphabetical by display name. "auto" is excluded — it's added
+# separately as the first item where appropriate.
+_PRIORITY_LANGUAGES = ("English", "Vietnamese", "Chinese", "Japanese")
+
+
+def language_codes_ordered():
+    """Return LANGUAGE_CODES_AI without 'auto', priority-first then A→Z."""
+    rest = [(code, name) for code, name in LANGUAGE_CODES_AI if code != "auto"]
+    priority = []
+    for prio_name in _PRIORITY_LANGUAGES:
+        match = next((pair for pair in rest if pair[1] == prio_name), None)
+        if match:
+            priority.append(match)
+            rest.remove(match)
+    rest.sort(key=lambda pair: pair[1].lower())
+    return priority + rest

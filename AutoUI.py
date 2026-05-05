@@ -32,7 +32,7 @@ from PySide6.QtGui import QMovie, QPixmap, QDesktopServices, QIcon
 from PySide6.QtCore import QThread, QUrl, Qt, Signal
 
 from modules import ui_DogeAutoSub
-from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES, TRANSLATION_ENGINES, TRANSLATION_ENGINES_SUBTITLE_ONLY
+from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES, TRANSLATION_ENGINES, TRANSLATION_ENGINES_SUBTITLE_ONLY, language_codes_ordered
 from modules.subtitle_args import SubtitleArgs
 from modules.mlaas_client import (
     MLAASConfig, fetch_mlaas_model_list, translate_segments_mlaas,
@@ -284,10 +284,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.source_language_dropdown.clear()
         self.target_language_dropdown.clear()
         self.source_language_dropdown.addItem("Auto")
-        for code, name in LANGUAGE_CODES_AI:
-            if code != "auto":
-                self.source_language_dropdown.addItem(name)
-                self.target_language_dropdown.addItem(name)
+        for code, name in language_codes_ordered():
+            self.source_language_dropdown.addItem(name)
+            self.target_language_dropdown.addItem(name)
         self.source_language_dropdown.setCurrentText("Auto")
         self.target_language_dropdown.setCurrentText("English")
     
@@ -343,10 +342,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.trans_src_lang.clear()
             self.trans_tgt_lang.clear()
             self.trans_src_lang.addItem("Auto")
-            for code, name in LANGUAGE_CODES_AI:
-                if code != "auto":
-                    self.trans_src_lang.addItem(name)
-                    self.trans_tgt_lang.addItem(name)
+            for code, name in language_codes_ordered():
+                self.trans_src_lang.addItem(name)
+                self.trans_tgt_lang.addItem(name)
             self.trans_src_lang.setCurrentText("Auto")
             self.trans_tgt_lang.setCurrentText("Vietnamese")
 
