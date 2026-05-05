@@ -430,6 +430,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             "Save SRT":      "Saving",
         }
         self.subtitle_thread.log_event.connect(self._on_log_event_for_eta)
+        self.subtitle_thread.log_event.connect(self._forward_to_log_panel)
         self.subtitle_thread.progress_update.connect(self._on_progress_update_for_eta)
         self.subtitle_thread.duration_update.connect(lambda _msg: None)
 
@@ -520,6 +521,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
                 Toast(self, msg, kind="error", duration_ms=4000).show_toast()
             except Exception:
                 pass
+
+    def _forward_to_log_panel(self, evt: dict):
+        kind = evt.get("kind")
+        if kind == "log":
+            self.logPanel.log(evt.get("level", "info"), evt.get("text", ""))
+        elif kind == "step_start":
+            self.logPanel.step_start(evt.get("step", ""))
+        elif kind == "step_done":
+            self.logPanel.step_done(evt.get("step", ""), evt.get("detail", ""))
+        elif kind == "step_error":
+            self.logPanel.step_error(evt.get("step", ""), evt.get("detail", ""))
 
     # ── Palette ──────────────────────────────────────────────────
 
