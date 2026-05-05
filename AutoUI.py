@@ -537,6 +537,10 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         QApplication.instance().setStyleSheet(build_stylesheet(palette_id))
         self.paletteStripe.set_palette(palette_id)
         self.phaseStrip.set_accent_color(self._accent_for(palette_id))
+        # Sync button label/icon without re-emitting the signal
+        self.paletteMenuButton.blockSignals(True)
+        self.paletteMenuButton.select(palette_id)
+        self.paletteMenuButton.blockSignals(False)
         QSettings("DogeAutoSub", "ui").setValue("theme/palette", palette_id)
 
     # ── Frameless window helpers ─────────────────────────────────
