@@ -139,26 +139,36 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             "translate": PIPELINE_TRANSLATE,
         }
 
-        # ── Setup animations ────────────────────────────────────
+        # ── Mascot ───────────────────────────────────────────────
+        from modules.mascot import MascotWidget
+        mascot_parent = self.statusImage.parentWidget()
+        mascot_layout = mascot_parent.layout() if mascot_parent else None
+        if mascot_layout is not None:
+            midx = mascot_layout.indexOf(self.statusImage)
+            mascot_layout.removeWidget(self.statusImage)
+            self.statusImage.deleteLater()
+            self.statusImage = MascotWidget(bubble_target=self.speechBubble)
+            mascot_layout.insertWidget(midx, self.statusImage)
+        else:
+            # Fallback: just replace in-place
+            self.statusImage = MascotWidget(bubble_target=self.speechBubble)
+
+        # ── Card hover lift ───────────────────────────────────────
+        from modules.animations import lift_on_hover
+        for _card_name in ("fileCard", "settingsCard", "actionCard", "mascotCard",
+                           "notesFileCard", "notesOutputCard",
+                           "transFileCard", "transSettingsCard", "transOutputCard"):
+            _w = getattr(self, _card_name, None)
+            if _w:
+                lift_on_hover(_w, dy=2, duration_ms=120)
+
+        # ── Legacy animation refs (kept for backward compat) ─────
         self.loading_movie = None
         self.standby_movie = None
         self.done_pixmap = None
-        
         loading_gif = os.path.join(SCRIPT_DIR, "icons", "loading.gif")
         start_gif = os.path.join(SCRIPT_DIR, "icons", "start.gif")
         done_img = os.path.join(SCRIPT_DIR, "icons", "done.jpg")
-        
-        if os.path.exists(loading_gif):
-            self.loading_movie = QMovie(loading_gif)
-        if os.path.exists(start_gif):
-            self.standby_movie = QMovie(start_gif)
-            self.statusImage.setMovie(self.standby_movie)
-            self.standby_movie.start()
-        if os.path.exists(done_img):
-            self.done_pixmap = QPixmap(done_img).scaled(
-                130, 130, Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
         
         # ── Load MLAAS API key from .env ─────────────────────
         self.mlaas_config = MLAASConfig.from_env()
@@ -401,6 +411,10 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if self.done_pixmap:
             self.statusImage.setPixmap(self.done_pixmap)
         self.logPanel.notify_completion()
+        try:
+            self.statusImage.set_state("celebrate")
+        except Exception:
+            pass
 
     def _on_log_event(self, evt: dict):
         kind = evt.get("kind")
@@ -412,6 +426,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.logPanel.step_error(evt["step"], evt.get("detail", ""))
         elif kind == "log":
             self.logPanel.log(evt.get("level", "info"), evt.get("text", ""))
+        # Forward to mascot
+        try:
+            self.statusImage.handle_log_event(evt)
+        except Exception:
+            pass
+        # Doge says things from log events
+        if kind == "log" and evt.get("level") == "doge":
+            try:
+                self.statusImage.say(evt.get("text", ""))
+            except Exception:
+                pass
     
     # ── Meeting Notes ───────────────────────────────────────────
     
