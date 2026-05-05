@@ -135,48 +135,57 @@ class ThroughputTracker:
 
 class SubtitleThread(QThread):
     """Worker thread for subtitle generation pipeline."""
-    
+
     task_complete = Signal()
     task_start = Signal()
     progress_update = Signal(int)
     status_update = Signal(str)
     duration_update = Signal(str)
-    
+    log_event = Signal(dict)
+
     def __init__(self, args: SubtitleArgs):
         super().__init__()
         self.args = args
         self.tracker = ThroughputTracker()
-    
+
+    def _emit(self, kind: str, **fields):
+        evt = {"kind": kind}
+        evt.update(fields)
+        self.log_event.emit(evt)
+
     def run(self):
         try:
             self.task_start.emit()
             self.tracker = ThroughputTracker()
-            
+
             src_code = _lang_code(self.args.src_language or "Auto", "auto")
             dst_code = _lang_code(self.args.dst_language or "English", "en")
             os.makedirs(TEMP_DIR, exist_ok=True)
-            
+
             # ── Step 1: Load faster-whisper + Process ───────────
+            self._emit("step_start", step="Load model")
             self.status_update.emit("Loading faster-whisper model…")
             self.progress_update.emit(5)
-            
+
             from modules.faster_whisper_engine import FasterWhisperRecognizer
             from modules.chunk_processor import ChunkProcessor
-            
+
             processor = ChunkProcessor(
                 chunk_duration=30.0,
                 volume_boost=str(self.args.volume),
                 ffmpeg_path=FFMPEG_PATH,
             )
-            
+
             recognizer = FasterWhisperRecognizer(
                 model_size=self.args.model_size,
                 language=None if src_code == "auto" else src_code,
             )
-            
+
             self.progress_update.emit(15)
-            
+            self._emit("step_done", step="Load model")
+
             # ── Step 2: Extract audio + Transcribe ──────────────
+            self._emit("step_start", step="Extract audio")
             self.status_update.emit("Processing audio…")
             self.tracker.start_stage()
             
@@ -188,19 +197,23 @@ class SubtitleThread(QThread):
                     progress = 15 + int((completed / total) * 70)
                     self.progress_update.emit(min(progress, 85))
                 self.status_update.emit(stage)
+                self._emit("log", level="info", text=stage)
                 if processor.total_duration > 0:
                     audio_done = (completed / max(total, 1)) * processor.total_duration
                     self.tracker.update(audio_done)
                 eta = self.tracker.eta_string()
                 elapsed = self.tracker.elapsed_string()
                 self.duration_update.emit(f"Elapsed: {elapsed} | ETA: {eta}")
-            
+
             segs, detected = processor.process_parallel(
                 self.args.source_path,
                 recognizer,
                 progress_callback=chunk_progress_cb,
             )
-            
+
+            self._emit("step_done", step="Extract audio")
+            self._emit("step_start", step="Transcribe")
+
             transcribe_time = time.time() - transcribe_start
             video_duration = processor.total_duration
             self.tracker.set_total_audio(video_duration)
@@ -214,12 +227,14 @@ class SubtitleThread(QThread):
             actual_src = detected if (src_code == "auto" and detected) else src_code
             
             # ── Step 3: Save original transcription ─────────────
+            self._emit("step_done", step="Transcribe")
+            self._emit("step_start", step="Translate")
             self.status_update.emit("Saving transcription…")
             self.progress_update.emit(86)
             orig_srt = os.path.join(out_dir, f"{base}.srt")
             if segs:
                 save_as_srt(segs, orig_srt)
-            
+
             # ── Step 4: Translate if needed ──────────────────────
             translate_time = 0
             if actual_src != dst_code:
@@ -260,7 +275,10 @@ class SubtitleThread(QThread):
                     save_as_srt(translated_segments, tgt_srt)
             
             # ── Step 5: Done ────────────────────────────────────
+            self._emit("step_done", step="Translate")
+            self._emit("step_start", step="Save SRT")
             self.progress_update.emit(100)
+            self._emit("step_done", step="Save SRT")
             
             total_time = time.time() - self.tracker.start_time
             print(f"\n{'='*50}")
@@ -283,5 +301,6 @@ class SubtitleThread(QThread):
             print(f"SubtitleThread error: {e}")
             import traceback
             traceback.print_exc()
+            self._emit("log", level="error", text=str(e))
             self.status_update.emit(f"Error: {str(e)[:80]}")
             self.task_complete.emit()
