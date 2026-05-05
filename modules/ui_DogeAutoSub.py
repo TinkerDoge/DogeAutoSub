@@ -1,156 +1,208 @@
 # -*- coding: utf-8 -*-
-"""
-DogeAutoSub — Modern UI Layout
-Hand-coded replacement for Qt Designer generated file.
-Provides a QMainWindow with tabbed interface (Subtitles + Meeting Notes).
+"""DogeAutoSub — Win95-modernized UI layout.
+
+Hand-coded layout. Preserves every widget name and signal previously
+used by AutoUI.py so that file requires no changes during Phase A.
 """
 
-from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
-from PySide6.QtGui import QFont, QIcon
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel,
     QLineEdit, QMainWindow, QProgressBar, QPushButton,
-    QSizePolicy, QSlider, QTabWidget, QTextEdit,
-    QVBoxLayout, QWidget, QSpacerItem,
+    QSlider, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
 
 class Ui_MainWindow(object):
-    """Modern tabbed UI for DogeAutoSub."""
+    """Tabbed UI: Subtitles + Meeting Notes + Translate File."""
 
-    def setupUi(self, MainWindow):
+    # ── Helpers ─────────────────────────────────────────────────────────────
+    def _label(self, text: str, *, small: bool = False) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setFont(self.font_small if small else self.font_body)
+        return lbl
+
+    def _section_title(self, text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setObjectName("sectionTitle")
+        lbl.setFont(self.font_title)
+        return lbl
+
+    def _card(self) -> QFrame:
+        f = QFrame()
+        f.setObjectName("card")
+        f.setFrameShape(QFrame.Shape.StyledPanel)
+        return f
+
+    # ── setupUi ──────────────────────────────────────────────────────────────
+    def setupUi(self, MainWindow: QMainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(600, 950)
-        MainWindow.setMinimumSize(QSize(610, 950))
-        MainWindow.setMaximumSize(QSize(610, 950))
+        MainWindow.resize(720, 1080)
+        MainWindow.setMinimumSize(QSize(720, 1080))
+        MainWindow.setMaximumSize(QSize(720, 1080))
         MainWindow.setWindowTitle("DogeAutoSub")
 
-        # Fonts
         self.font_title = QFont()
-        self.font_title.setFamilies(["Segoe UI", "Inter", "Arial"])
         self.font_title.setPointSize(11)
         self.font_title.setBold(True)
-
         self.font_body = QFont()
-        self.font_body.setFamilies(["Segoe UI", "Inter", "Arial"])
         self.font_body.setPointSize(10)
-
         self.font_small = QFont()
-        self.font_small.setFamilies(["Segoe UI", "Inter", "Arial"])
         self.font_small.setPointSize(9)
 
-        # ── Central Widget ──────────────────────────────────────
+        # ── Central widget ────────────────────────────────────────────────
         self.centralWidget = QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
         MainWindow.setCentralWidget(self.centralWidget)
 
-        self.mainLayout = QVBoxLayout(self.centralWidget)
-        self.mainLayout.setContentsMargins(16, 12, 16, 12)
-        self.mainLayout.setSpacing(8)
+        outer = QVBoxLayout(self.centralWidget)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
-        # ── Header Row (Title + Theme/Folder buttons) ───────────
-        self.headerLayout = QHBoxLayout()
-        self.headerLayout.setSpacing(8)
+        # ── Faux Win95 title bar (cosmetic decoration) ────────────────────
+        self.fauxTitleBar = QFrame()
+        self.fauxTitleBar.setObjectName("fauxTitleBar")
+        ttl = QHBoxLayout(self.fauxTitleBar)
+        ttl.setContentsMargins(8, 0, 6, 0)
+        ttl.setSpacing(4)
 
-        self.appTitle = QLabel("DogeAutoSub")
-        self.appTitle.setFont(self.font_title)
-        self.appTitle.setObjectName("sectionTitle")
-        self.headerLayout.addWidget(self.appTitle)
+        self.fauxTitleText = QLabel("🐕 DogeAutoSub")
+        self.fauxTitleText.setObjectName("fauxTitleText")
+        ttl.addWidget(self.fauxTitleText)
 
         self.versionLabel = QLabel("")
+        self.versionLabel.setStyleSheet("color: #c0d0f0; padding-left: 4px;")
         self.versionLabel.setFont(self.font_small)
-        self.versionLabel.setObjectName("versionLabel")
-        self.versionLabel.setStyleSheet("color: #8b949e; padding-left: 4px;")
-        self.headerLayout.addWidget(self.versionLabel)
+        ttl.addWidget(self.versionLabel)
+        ttl.addStretch()
 
-        self.headerLayout.addStretch()
+        for ch in ("_", "□", "×"):
+            b = QLabel(ch)
+            b.setStyleSheet(
+                "color:#000; background:#c0c0c0;"
+                "border:1px solid #fff; padding:0 6px; font-size:10px;"
+                "min-width:14px; max-height:14px; border-radius:2px;"
+            )
+            b.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ttl.addWidget(b)
+
+        outer.addWidget(self.fauxTitleBar)
+
+        # ── Cosmetic menu bar ────────────────────────────────────────────
+        self.menuBarFrame = QFrame()
+        self.menuBarFrame.setObjectName("menuBar")
+        menu = QHBoxLayout(self.menuBarFrame)
+        menu.setContentsMargins(4, 0, 4, 0)
+        menu.setSpacing(2)
+
+        self.menuItems: dict[str, QLabel] = {}
+        for name in ("File", "Edit", "View", "Help"):
+            lbl = QLabel(name)
+            lbl.setObjectName("menuItem")
+            menu.addWidget(lbl)
+            self.menuItems[name] = lbl
+        menu.addStretch()
 
         self.openFolderBtn = QPushButton("📂")
         self.openFolderBtn.setObjectName("openFolderBtn")
+        self.openFolderBtn.setFixedSize(24, 20)
         self.openFolderBtn.setToolTip("Open output folder")
-        self.headerLayout.addWidget(self.openFolderBtn)
+        menu.addWidget(self.openFolderBtn)
 
         self.themeBtn = QPushButton("🎨")
         self.themeBtn.setObjectName("themeBtn")
+        self.themeBtn.setFixedSize(24, 20)
         self.themeBtn.setToolTip("Toggle dark/light theme")
-        self.headerLayout.addWidget(self.themeBtn)
+        menu.addWidget(self.themeBtn)
 
-        self.mainLayout.addLayout(self.headerLayout)
+        outer.addWidget(self.menuBarFrame)
 
-        # ── Tab Widget ──────────────────────────────────────────
+        # ── App body ─────────────────────────────────────────────────────
+        body = QFrame()
+        body.setObjectName("body")
+        bodyLay = QVBoxLayout(body)
+        bodyLay.setContentsMargins(14, 10, 14, 14)
+        bodyLay.setSpacing(8)
+        outer.addWidget(body, 1)
+
+        # Kept for backward-compat; hidden — title is now in fauxTitleBar
+        self.appTitle = QLabel("DogeAutoSub")
+        self.appTitle.setObjectName("sectionTitle")
+        self.appTitle.setVisible(False)
+        bodyLay.addWidget(self.appTitle)
+
+        # ── Tab widget ───────────────────────────────────────────────────
         self.tabWidget = QTabWidget()
         self.tabWidget.setObjectName("tabWidget")
-        self.mainLayout.addWidget(self.tabWidget)
+        bodyLay.addWidget(self.tabWidget, 1)
 
-        # ════════════════════════════════════════════════════════
-        # TAB 1: SUBTITLES
-        # ════════════════════════════════════════════════════════
+        self._build_subtitles_tab()
+        self._build_notes_tab()
+        self._build_translate_tab()
+
+        # ── Wire slider → label ───────────────────────────────────────────
+        self.boostSlider.valueChanged.connect(lambda v: self.boostLabel.setText(str(v)))
+
+    # ── Tab builders ─────────────────────────────────────────────────────────
+
+    def _build_subtitles_tab(self):
         self.subtitleTab = QWidget()
         self.subtitleTab.setObjectName("subtitleTab")
-        self.subtitleTabLayout = QVBoxLayout(self.subtitleTab)
-        self.subtitleTabLayout.setContentsMargins(8, 12, 8, 8)
-        self.subtitleTabLayout.setSpacing(10)
+        lay = QVBoxLayout(self.subtitleTab)
+        lay.setContentsMargins(8, 12, 8, 8)
+        lay.setSpacing(10)
 
-        # ── File Selection Card ─────────────────────────────────
+        # ── File card ────────────────────────────────────────────────────
         self.fileCard = QFrame()
-        self.fileCard.setObjectName("fileCard")
+        self.fileCard.setObjectName("card")
         self.fileCard.setFrameShape(QFrame.Shape.StyledPanel)
-        fileCardLayout = QVBoxLayout(self.fileCard)
-        fileCardLayout.setSpacing(8)
+        flay = QVBoxLayout(self.fileCard)
+        flay.setSpacing(8)
 
-        fileHeaderLayout = QHBoxLayout()
-        fileSectionLabel = QLabel("📁 Input / Output")
-        fileSectionLabel.setFont(self.font_title)
-        fileSectionLabel.setObjectName("sectionTitle")
-        fileHeaderLayout.addWidget(fileSectionLabel)
-        fileHeaderLayout.addStretch()
-        fileCardLayout.addLayout(fileHeaderLayout)
+        flay.addWidget(self._section_title("📁 Input / Output"))
 
-        fileBtnLayout = QHBoxLayout()
-        fileBtnLayout.setSpacing(8)
+        btnRow = QHBoxLayout()
+        btnRow.setSpacing(8)
 
         self.selectFileBtn = QPushButton("🎬  Select Video File")
         self.selectFileBtn.setObjectName("selectFileBtn")
         self.selectFileBtn.setToolTip("Click or drag a video/audio file here")
         self.selectFileBtn.setMinimumHeight(48)
-        fileBtnLayout.addWidget(self.selectFileBtn, stretch=2)
+        btnRow.addWidget(self.selectFileBtn, stretch=2)
 
         self.selectOutputBtn = QPushButton("📁  Output Folder")
         self.selectOutputBtn.setObjectName("selectOutputBtn")
         self.selectOutputBtn.setToolTip("Choose where to save subtitle files")
         self.selectOutputBtn.setMinimumHeight(48)
-        fileBtnLayout.addWidget(self.selectOutputBtn, stretch=1)
+        btnRow.addWidget(self.selectOutputBtn, stretch=1)
 
-        fileCardLayout.addLayout(fileBtnLayout)
+        flay.addLayout(btnRow)
 
         self.filePathLabel = QLabel("No file selected")
         self.filePathLabel.setObjectName("filePathLabel")
         self.filePathLabel.setFont(self.font_small)
         self.filePathLabel.setWordWrap(True)
-        fileCardLayout.addWidget(self.filePathLabel)
+        flay.addWidget(self.filePathLabel)
 
-        self.subtitleTabLayout.addWidget(self.fileCard)
+        lay.addWidget(self.fileCard)
 
-        # ── Settings Card ───────────────────────────────────────
+        # ── Settings card ────────────────────────────────────────────────
         self.settingsCard = QFrame()
-        self.settingsCard.setObjectName("settingsCard")
+        self.settingsCard.setObjectName("card")
         self.settingsCard.setFrameShape(QFrame.Shape.StyledPanel)
-        settingsLayout = QVBoxLayout(self.settingsCard)
-        settingsLayout.setSpacing(10)
+        slay = QVBoxLayout(self.settingsCard)
+        slay.setSpacing(10)
 
-        settingsTitle = QLabel("⚙️ Settings")
-        settingsTitle.setFont(self.font_title)
-        settingsTitle.setObjectName("sectionTitle")
-        settingsLayout.addWidget(settingsTitle)
+        slay.addWidget(self._section_title("⚙️ Settings"))
 
-        # Hidden model dropdown (kept for backend compatibility, not shown)
+        # Hidden — kept for backend compatibility
         self.model_size_dropdown = QComboBox()
         self.model_size_dropdown.setObjectName("modelDropdown")
         self.model_size_dropdown.setVisible(False)
-        settingsLayout.addWidget(self.model_size_dropdown)
+        slay.addWidget(self.model_size_dropdown)
 
-        # Hidden labels (kept for backend compatibility)
         self.VRamUsage = QLabel("")
         self.VRamUsage.setVisible(False)
         self.rSpeed = QLabel("")
@@ -175,155 +227,161 @@ class Ui_MainWindow(object):
         self.target_language_dropdown.setToolTip("Language to translate subtitles to")
         langGrid.addWidget(self.target_language_dropdown, 1, 1)
 
-        settingsLayout.addLayout(langGrid)
+        slay.addLayout(langGrid)
 
         # Engine + Volume row
-        engineVolGrid = QGridLayout()
-        engineVolGrid.setHorizontalSpacing(12)
-        engineVolGrid.setVerticalSpacing(6)
+        evGrid = QGridLayout()
+        evGrid.setHorizontalSpacing(12)
+        evGrid.setVerticalSpacing(6)
 
-        engineVolGrid.addWidget(self._label("Translation Engine"), 0, 0)
+        evGrid.addWidget(self._label("Translation Engine"), 0, 0)
         self.target_engine = QComboBox()
         self.target_engine.setObjectName("engineDropdown")
         self.target_engine.setFont(self.font_body)
-        self.target_engine.setToolTip("Claude/GPT use MLAAS API. Google Translate for offline fallback. Whisper can only translate to English.")
-        engineVolGrid.addWidget(self.target_engine, 1, 0)
+        self.target_engine.setToolTip(
+            "Claude/GPT use MLAAS API. Google Translate for offline fallback. "
+            "Whisper can only translate to English."
+        )
+        evGrid.addWidget(self.target_engine, 1, 0)
 
-        engineVolGrid.addWidget(self._label("Volume Boost"), 0, 1)
-        volLayout = QHBoxLayout()
-        volLayout.setSpacing(8)
+        evGrid.addWidget(self._label("Volume Boost"), 0, 1)
+        volRow = QHBoxLayout()
+        volRow.setSpacing(8)
         self.boostSlider = QSlider(Qt.Orientation.Horizontal)
         self.boostSlider.setObjectName("boostSlider")
         self.boostSlider.setMinimum(1)
         self.boostSlider.setMaximum(10)
         self.boostSlider.setValue(3)
         self.boostSlider.setToolTip("Increase if the source audio volume is too low")
-        volLayout.addWidget(self.boostSlider)
+        volRow.addWidget(self.boostSlider)
         self.boostLabel = QLabel("3")
         self.boostLabel.setFont(self.font_body)
         self.boostLabel.setMinimumWidth(20)
-        volLayout.addWidget(self.boostLabel)
-        engineVolGrid.addLayout(volLayout, 1, 1)
+        volRow.addWidget(self.boostLabel)
+        evGrid.addLayout(volRow, 1, 1)
 
-        settingsLayout.addLayout(engineVolGrid)
+        slay.addLayout(evGrid)
 
-        # ── MLAAS API Status (inside settings) ────────────────────
+        # MLAAS API sub-card
         mlaasFrame = QFrame()
-        mlaasFrame.setObjectName("fileCard")
+        mlaasFrame.setObjectName("card")
         mlaasFrame.setFrameShape(QFrame.Shape.StyledPanel)
-        mlaasLayout = QHBoxLayout(mlaasFrame)
-        mlaasLayout.setContentsMargins(8, 6, 8, 6)
-        mlaasLayout.setSpacing(8)
+        mlay = QVBoxLayout(mlaasFrame)
+        mlay.setContentsMargins(8, 6, 8, 6)
+        mlay.setSpacing(4)
 
-        mlaasTitle = QLabel("🔑 MLAAS API")
-        mlaasTitle.setFont(self.font_title)
-        mlaasTitle.setObjectName("sectionTitle")
-        mlaasLayout.addWidget(mlaasTitle)
-
+        mlaasTop = QHBoxLayout()
+        mlaasTop.setSpacing(8)
+        mlaasTop.addWidget(self._section_title("🔑 MLAAS API"))
         self.mlaasStatusLabel = QLabel("Loading…")
         self.mlaasStatusLabel.setFont(self.font_body)
         self.mlaasStatusLabel.setStyleSheet("color: #888;")
-        mlaasLayout.addWidget(self.mlaasStatusLabel)
-        mlaasLayout.addStretch()
+        mlaasTop.addWidget(self.mlaasStatusLabel)
+        mlaasTop.addStretch()
+        mlay.addLayout(mlaasTop)
 
-        settingsLayout.addWidget(mlaasFrame)
+        bearerRow = QHBoxLayout()
+        bearerRow.setSpacing(6)
+        self.bearerTokenEdit = QLineEdit()
+        self.bearerTokenEdit.setPlaceholderText(
+            "Paste Bearer JWT token here (optional, overrides API key)…"
+        )
+        self.bearerTokenEdit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.bearerTokenEdit.setFont(self.font_body)
+        self.bearerTokenEdit.setToolTip(
+            "Personal JWT token from mlaas.virtuosgames.com/auth/token\n"
+            "Expires every ~2 hours. Use when the shared API key hits rate limits."
+        )
+        bearerRow.addWidget(self.bearerTokenEdit, 1)
+        self.getTokenBtn = QPushButton("🔗 Get Token")
+        self.getTokenBtn.setFont(self.font_body)
+        self.getTokenBtn.setFixedWidth(100)
+        self.getTokenBtn.setToolTip("Open the MLAAS token generator in your browser")
+        bearerRow.addWidget(self.getTokenBtn)
+        mlay.addLayout(bearerRow)
 
-        self.subtitleTabLayout.addWidget(self.settingsCard)
+        slay.addWidget(mlaasFrame)
+        lay.addWidget(self.settingsCard)
 
-        # ── Action Card (Start + Progress) ──────────────────────
+        # ── Action card ───────────────────────────────────────────────────
         self.actionCard = QFrame()
-        self.actionCard.setObjectName("actionCard")
+        self.actionCard.setObjectName("card")
         self.actionCard.setFrameShape(QFrame.Shape.StyledPanel)
-        actionLayout = QVBoxLayout(self.actionCard)
-        actionLayout.setSpacing(10)
+        alay = QVBoxLayout(self.actionCard)
+        alay.setSpacing(10)
 
         self.startButton = QPushButton("▶  START PROCESSING")
         self.startButton.setObjectName("startButton")
         self.startButton.setToolTip("Begin subtitle generation")
         self.startButton.setFont(self.font_title)
-        actionLayout.addWidget(self.startButton)
+        alay.addWidget(self.startButton)
 
         self.progressBar = QProgressBar()
         self.progressBar.setObjectName("progressBar")
         self.progressBar.setValue(0)
         self.progressBar.setTextVisible(True)
-        actionLayout.addWidget(self.progressBar)
+        alay.addWidget(self.progressBar)
 
-        # Status row
         statusRow = QHBoxLayout()
         statusRow.setSpacing(12)
-
         self.statusLabel = QLabel("Standby")
         self.statusLabel.setObjectName("statusLabel")
         self.statusLabel.setFont(self.font_body)
         statusRow.addWidget(self.statusLabel)
-
         statusRow.addStretch()
-
         self.etaLabel = QLabel("")
         self.etaLabel.setObjectName("etaLabel")
         self.etaLabel.setFont(self.font_small)
         statusRow.addWidget(self.etaLabel)
+        alay.addLayout(statusRow)
 
-        actionLayout.addLayout(statusRow)
-
-        # Status image (loading animation)
         self.statusImage = QLabel()
         self.statusImage.setObjectName("statusImage")
         self.statusImage.setMaximumSize(QSize(130, 130))
         self.statusImage.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        actionLayout.addWidget(self.statusImage, alignment=Qt.AlignmentFlag.AlignCenter)
+        alay.addWidget(self.statusImage, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.subtitleTabLayout.addWidget(self.actionCard)
-
-        # Add stretch at bottom
-        self.subtitleTabLayout.addStretch()
+        lay.addWidget(self.actionCard)
+        lay.addStretch()
 
         self.tabWidget.addTab(self.subtitleTab, "📝 Subtitles")
 
-        # ════════════════════════════════════════════════════════
-        # TAB 2: MEETING NOTES
-        # ════════════════════════════════════════════════════════
+    def _build_notes_tab(self):
         self.notesTab = QWidget()
         self.notesTab.setObjectName("notesTab")
-        self.notesTabLayout = QVBoxLayout(self.notesTab)
-        self.notesTabLayout.setContentsMargins(8, 12, 8, 8)
-        self.notesTabLayout.setSpacing(10)
+        lay = QVBoxLayout(self.notesTab)
+        lay.setContentsMargins(8, 12, 8, 8)
+        lay.setSpacing(10)
 
-        # ── File Upload Card ────────────────────────────────────
+        # File upload card
         self.notesFileCard = QFrame()
-        self.notesFileCard.setObjectName("notesFileCard")
+        self.notesFileCard.setObjectName("card")
         self.notesFileCard.setFrameShape(QFrame.Shape.StyledPanel)
-        notesFileLayout = QVBoxLayout(self.notesFileCard)
-        notesFileLayout.setSpacing(8)
+        nflay = QVBoxLayout(self.notesFileCard)
+        nflay.setSpacing(8)
 
-        notesFileTitle = QLabel("📄 Meeting Transcript")
-        notesFileTitle.setFont(self.font_title)
-        notesFileTitle.setObjectName("sectionTitle")
-        notesFileLayout.addWidget(notesFileTitle)
+        nflay.addWidget(self._section_title("📄 Meeting Transcript"))
 
         self.selectDocxBtn = QPushButton("📎  Upload DOCX Transcript")
-        self.selectDocxBtn.setObjectName("selectFileBtn")
+        self.selectDocxBtn.setObjectName("selectDocxBtn")
         self.selectDocxBtn.setToolTip("Upload a Teams or Zoom meeting transcript (.docx)")
         self.selectDocxBtn.setMinimumHeight(48)
-        notesFileLayout.addWidget(self.selectDocxBtn)
+        nflay.addWidget(self.selectDocxBtn)
 
         self.docxPathLabel = QLabel("No transcript uploaded")
         self.docxPathLabel.setObjectName("filePathLabel")
         self.docxPathLabel.setFont(self.font_small)
         self.docxPathLabel.setWordWrap(True)
-        notesFileLayout.addWidget(self.docxPathLabel)
+        nflay.addWidget(self.docxPathLabel)
 
-        self.notesTabLayout.addWidget(self.notesFileCard)
+        lay.addWidget(self.notesFileCard)
 
-        # Meeting Notes reuses MLAAS config from Subtitles tab
-        # No separate LLM config card needed
-        mlaasNoteInfo = QLabel("ℹ️ Uses MLAAS API token from Subtitles tab for summarization.")
-        mlaasNoteInfo.setFont(self.font_small)
-        mlaasNoteInfo.setWordWrap(True)
-        self.notesTabLayout.addWidget(mlaasNoteInfo)
+        info = QLabel("ℹ️ Uses MLAAS API token from Subtitles tab for summarization.")
+        info.setFont(self.font_small)
+        info.setWordWrap(True)
+        lay.addWidget(info)
 
-        # Hidden widgets for backward compatibility with AutoUI.py
+        # Hidden — backend compatibility
         self.llmApiUrl = QLineEdit()
         self.llmApiUrl.setVisible(False)
         self.llmApiKey = QLineEdit()
@@ -331,12 +389,12 @@ class Ui_MainWindow(object):
         self.llmModelName = QLineEdit()
         self.llmModelName.setVisible(False)
 
-        # ── Generate + Output Card ──────────────────────────────
+        # Output card
         self.notesOutputCard = QFrame()
-        self.notesOutputCard.setObjectName("notesOutputCard")
+        self.notesOutputCard.setObjectName("card")
         self.notesOutputCard.setFrameShape(QFrame.Shape.StyledPanel)
-        notesOutLayout = QVBoxLayout(self.notesOutputCard)
-        notesOutLayout.setSpacing(8)
+        nolay = QVBoxLayout(self.notesOutputCard)
+        nolay.setSpacing(8)
 
         notesBtnRow = QHBoxLayout()
         self.generateNotesBtn = QPushButton("✨  Generate Meeting Notes")
@@ -344,77 +402,66 @@ class Ui_MainWindow(object):
         self.generateNotesBtn.setFont(self.font_title)
         self.generateNotesBtn.setMinimumHeight(44)
         notesBtnRow.addWidget(self.generateNotesBtn)
-
         self.saveNotesBtn = QPushButton("💾 Save")
         self.saveNotesBtn.setObjectName("saveNotesBtn")
         self.saveNotesBtn.setMinimumHeight(44)
         notesBtnRow.addWidget(self.saveNotesBtn)
-
-        notesOutLayout.addLayout(notesBtnRow)
+        nolay.addLayout(notesBtnRow)
 
         self.notesStatusLabel = QLabel("")
         self.notesStatusLabel.setObjectName("statusLabel")
         self.notesStatusLabel.setFont(self.font_small)
-        notesOutLayout.addWidget(self.notesStatusLabel)
+        nolay.addWidget(self.notesStatusLabel)
 
         self.notesOutput = QTextEdit()
         self.notesOutput.setObjectName("notesOutput")
         self.notesOutput.setPlaceholderText("Meeting notes will appear here after generation...")
         self.notesOutput.setFont(self.font_body)
         self.notesOutput.setMinimumHeight(200)
-        self.notesOutput.setReadOnly(False)
-        notesOutLayout.addWidget(self.notesOutput)
+        nolay.addWidget(self.notesOutput)
 
-        self.notesTabLayout.addWidget(self.notesOutputCard)
+        lay.addWidget(self.notesOutputCard)
 
         self.tabWidget.addTab(self.notesTab, "📋 Meeting Notes")
 
-        # ════════════════════════════════════════════════════════
-        # TAB 3: TRANSLATE FILE
-        # ════════════════════════════════════════════════════════
+    def _build_translate_tab(self):
         self.translateTab = QWidget()
         self.translateTab.setObjectName("translateTab")
-        self.translateTabLayout = QVBoxLayout(self.translateTab)
-        self.translateTabLayout.setContentsMargins(8, 12, 8, 8)
-        self.translateTabLayout.setSpacing(10)
+        lay = QVBoxLayout(self.translateTab)
+        lay.setContentsMargins(8, 12, 8, 8)
+        lay.setSpacing(10)
 
-        # ── File Upload Card ────────────────────────────────────
+        # File card
         self.transFileCard = QFrame()
-        self.transFileCard.setObjectName("fileCard")
+        self.transFileCard.setObjectName("card")
         self.transFileCard.setFrameShape(QFrame.Shape.StyledPanel)
-        transFileLayout = QVBoxLayout(self.transFileCard)
-        transFileLayout.setSpacing(8)
+        tflay = QVBoxLayout(self.transFileCard)
+        tflay.setSpacing(8)
 
-        transFileTitle = QLabel("📄 Source File")
-        transFileTitle.setFont(self.font_title)
-        transFileTitle.setObjectName("sectionTitle")
-        transFileLayout.addWidget(transFileTitle)
+        tflay.addWidget(self._section_title("📄 Source File"))
 
         self.selectTransFileBtn = QPushButton("📎  Upload File (.srt, .docx, .txt)")
-        self.selectTransFileBtn.setObjectName("selectFileBtn")
+        self.selectTransFileBtn.setObjectName("selectTransFileBtn")
         self.selectTransFileBtn.setToolTip("Upload a subtitle or transcript file to translate")
         self.selectTransFileBtn.setMinimumHeight(48)
-        transFileLayout.addWidget(self.selectTransFileBtn)
+        tflay.addWidget(self.selectTransFileBtn)
 
         self.transFilePathLabel = QLabel("No file selected")
         self.transFilePathLabel.setObjectName("filePathLabel")
         self.transFilePathLabel.setFont(self.font_small)
         self.transFilePathLabel.setWordWrap(True)
-        transFileLayout.addWidget(self.transFilePathLabel)
+        tflay.addWidget(self.transFilePathLabel)
 
-        self.translateTabLayout.addWidget(self.transFileCard)
+        lay.addWidget(self.transFileCard)
 
-        # ── Translation Settings Card ───────────────────────────
+        # Translation settings card
         self.transSettingsCard = QFrame()
-        self.transSettingsCard.setObjectName("settingsCard")
+        self.transSettingsCard.setObjectName("card")
         self.transSettingsCard.setFrameShape(QFrame.Shape.StyledPanel)
-        transSettingsLayout = QVBoxLayout(self.transSettingsCard)
-        transSettingsLayout.setSpacing(8)
+        tslay = QVBoxLayout(self.transSettingsCard)
+        tslay.setSpacing(8)
 
-        transSettingsTitle = QLabel("⚙️ Translation Settings")
-        transSettingsTitle.setFont(self.font_title)
-        transSettingsTitle.setObjectName("sectionTitle")
-        transSettingsLayout.addWidget(transSettingsTitle)
+        tslay.addWidget(self._section_title("⚙️ Translation Settings"))
 
         transLangGrid = QGridLayout()
         transLangGrid.setHorizontalSpacing(12)
@@ -432,70 +479,55 @@ class Ui_MainWindow(object):
         self.trans_tgt_lang.setFont(self.font_body)
         transLangGrid.addWidget(self.trans_tgt_lang, 1, 1)
 
-        transSettingsLayout.addLayout(transLangGrid)
+        tslay.addLayout(transLangGrid)
 
-        transEngineRow = QHBoxLayout()
-        transEngineRow.setSpacing(12)
-        transEngineRow.addWidget(self._label("Engine:"))
+        engRow = QHBoxLayout()
+        engRow.setSpacing(12)
+        engRow.addWidget(self._label("Engine:"))
         self.trans_engine = QComboBox()
         self.trans_engine.setObjectName("transEngine")
         self.trans_engine.setFont(self.font_body)
-        transEngineRow.addWidget(self.trans_engine, stretch=1)
-        transSettingsLayout.addLayout(transEngineRow)
+        engRow.addWidget(self.trans_engine, stretch=1)
+        tslay.addLayout(engRow)
 
-        transTokenInfo = QLabel("ℹ️ Uses MLAAS token from Subtitles tab if MLAAS engine is selected.")
-        transTokenInfo.setFont(self.font_small)
-        transTokenInfo.setWordWrap(True)
-        transSettingsLayout.addWidget(transTokenInfo)
+        tokInfo = QLabel("ℹ️ Uses MLAAS token from Subtitles tab if MLAAS engine is selected.")
+        tokInfo.setFont(self.font_small)
+        tokInfo.setWordWrap(True)
+        tslay.addWidget(tokInfo)
 
-        self.translateTabLayout.addWidget(self.transSettingsCard)
+        lay.addWidget(self.transSettingsCard)
 
-        # ── Translate Action + Output Card ──────────────────────
+        # Output card
         self.transOutputCard = QFrame()
-        self.transOutputCard.setObjectName("notesOutputCard")
+        self.transOutputCard.setObjectName("card")
         self.transOutputCard.setFrameShape(QFrame.Shape.StyledPanel)
-        transOutLayout = QVBoxLayout(self.transOutputCard)
-        transOutLayout.setSpacing(8)
+        tolay = QVBoxLayout(self.transOutputCard)
+        tolay.setSpacing(8)
 
         transBtnRow = QHBoxLayout()
         self.translateFileBtn = QPushButton("🌐  Translate File")
-        self.translateFileBtn.setObjectName("generateNotesBtn")
+        self.translateFileBtn.setObjectName("translateFileBtn")
         self.translateFileBtn.setFont(self.font_title)
         self.translateFileBtn.setMinimumHeight(44)
         transBtnRow.addWidget(self.translateFileBtn)
-
         self.saveTransBtn = QPushButton("💾 Save")
-        self.saveTransBtn.setObjectName("saveNotesBtn")
+        self.saveTransBtn.setObjectName("saveTransBtn")
         self.saveTransBtn.setMinimumHeight(44)
         transBtnRow.addWidget(self.saveTransBtn)
-
-        transOutLayout.addLayout(transBtnRow)
+        tolay.addLayout(transBtnRow)
 
         self.transStatusLabel = QLabel("")
         self.transStatusLabel.setObjectName("statusLabel")
         self.transStatusLabel.setFont(self.font_small)
-        transOutLayout.addWidget(self.transStatusLabel)
+        tolay.addWidget(self.transStatusLabel)
 
         self.transOutput = QTextEdit()
         self.transOutput.setObjectName("transOutput")
         self.transOutput.setPlaceholderText("Translated content will appear here...")
         self.transOutput.setFont(self.font_body)
         self.transOutput.setMinimumHeight(200)
-        self.transOutput.setReadOnly(False)
-        transOutLayout.addWidget(self.transOutput)
+        tolay.addWidget(self.transOutput)
 
-        self.translateTabLayout.addWidget(self.transOutputCard)
+        lay.addWidget(self.transOutputCard)
 
         self.tabWidget.addTab(self.translateTab, "🌐 Translate")
-
-        # ── Wire up slider → label ──────────────────────────────
-        self.boostSlider.valueChanged.connect(lambda v: self.boostLabel.setText(str(v)))
-
-        QMetaObject.connectSlotsByName(MainWindow)
-
-    # ── Helper ──────────────────────────────────────────────────
-    def _label(self, text: str) -> QLabel:
-        """Create a small descriptive label."""
-        lbl = QLabel(text)
-        lbl.setFont(self.font_small)
-        return lbl
