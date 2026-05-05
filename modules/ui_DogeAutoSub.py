@@ -10,7 +10,7 @@ from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel,
     QLineEdit, QMainWindow, QProgressBar, QPushButton,
-    QSlider, QStackedWidget, QTabWidget, QTextEdit,
+    QScrollArea, QSlider, QStackedWidget, QTabWidget, QTextEdit,
     QVBoxLayout, QWidget,
 )
 
@@ -77,7 +77,7 @@ class Ui_MainWindow(object):
         self.fauxTitleBar = QFrame()
         self.fauxTitleBar.setObjectName("fauxTitleBar")
         tb = QHBoxLayout(self.fauxTitleBar)
-        tb.setContentsMargins(10, 0, 8, 0)
+        tb.setContentsMargins(10, 4, 8, 4)
         tb.setSpacing(8)
 
         for name in ("closeBtn", "minBtn", "zoomBtn"):
@@ -105,6 +105,7 @@ class Ui_MainWindow(object):
         self.paletteMenuButton = PaletteMenuButton(self.fauxTitleBar)
         self.paletteMenuButton.setObjectName("paletteMenuButton")
         self.paletteMenuButton.setFixedHeight(20)
+        self.paletteMenuButton.setMaximumHeight(20)
         tb.addWidget(self.paletteMenuButton)
 
         # Legacy buttons kept hidden so AutoUI.py signal connections don't break
@@ -257,6 +258,7 @@ class Ui_MainWindow(object):
         self.target_language_dropdown.setObjectName("tgtLangDropdown")
         langGrid.addWidget(self.target_language_dropdown, 1, 1)
         slay.addLayout(langGrid)
+        slay.addSpacing(6)
 
         slay.addWidget(self._section_title("ENGINE"))
         engGrid = QGridLayout()
@@ -281,6 +283,7 @@ class Ui_MainWindow(object):
         volRow.addWidget(self.boostLabel)
         engGrid.addLayout(volRow, 1, 1)
         slay.addLayout(engGrid)
+        slay.addSpacing(6)
 
         # MLAAS sub-card
         mlaasFrame = self._card()
@@ -355,8 +358,13 @@ class Ui_MainWindow(object):
         lay.addWidget(self.mascotHost)
 
         lay.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(pane)
         self.subtitleTab = pane
-        self.workflowStack.addWidget(pane)
+        self.workflowStack.addWidget(scroll)
 
     def _build_notes_pane(self):
         pane = QWidget()
@@ -390,10 +398,15 @@ class Ui_MainWindow(object):
         clay.addWidget(self.notesStatusLabel)
         lay.addWidget(card)
         lay.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(pane)
         # Alias for backward compat (AutoUI.py uses selectDocxBtn)
         self.selectDocxBtn = self.uploadDocxBtn
         self.notesTab = pane
-        self.workflowStack.addWidget(pane)
+        self.workflowStack.addWidget(scroll)
 
     def _build_translate_pane(self):
         pane = QWidget()
@@ -452,9 +465,14 @@ class Ui_MainWindow(object):
 
         lay.addWidget(card)
         lay.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(pane)
         # Aliases for backward compat (AutoUI.py uses old names)
         self.selectTransFileBtn = self.uploadTransBtn
         self.trans_src_lang = self.transSrcDropdown
         self.trans_tgt_lang = self.transTgtDropdown
         self.translateTab = pane
-        self.workflowStack.addWidget(pane)
+        self.workflowStack.addWidget(scroll)

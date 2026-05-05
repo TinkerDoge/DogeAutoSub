@@ -185,6 +185,26 @@ QPushButton#closeBtn:hover, QPushButton#minBtn:hover, QPushButton#zoomBtn:hover 
     border: 1px solid rgba(0,0,0,0.3);
 }}
 
+QPushButton#paletteMenuButton {{
+    background: transparent;
+    color: {text_secondary};
+    border: 1px solid {border};
+    border-radius: 4px;
+    padding: 1px 8px;
+    min-height: 18px;
+    max-height: 20px;
+    font-size: 10px;
+    font-weight: 500;
+}}
+QPushButton#paletteMenuButton:hover {{
+    background: {border};
+    color: {text_primary};
+}}
+QPushButton#paletteMenuButton::menu-indicator {{
+    image: none;
+    width: 0;
+}}
+
 QPushButton#startButton, QPushButton#generateNotesBtn, QPushButton#translateFileBtn {{
     background: {accent};
     color: {accent_text};
@@ -274,6 +294,14 @@ QMenu::item {{
 }}
 QMenu::item:selected {{
     background: {border};
+}}
+
+QScrollArea {{
+    background: {window_bg};
+    border: none;
+}}
+QScrollArea > QWidget > QWidget {{
+    background: {window_bg};
 }}
 
 QScrollBar:vertical {{

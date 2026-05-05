@@ -186,14 +186,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.statusBarGpu.setText("GPU: —")
         self.statusBarReady.setText("● Ready")
 
-        # ── Card hover lift ───────────────────────────────────────
-        from modules.animations import lift_on_hover
-        for _card_name in ("fileCard", "settingsCard", "actionCard", "mascotCard",
-                           "notesFileCard", "notesOutputCard",
-                           "transFileCard", "transSettingsCard", "transOutputCard"):
-            _w = getattr(self, _card_name, None)
-            if _w:
-                lift_on_hover(_w, dy=2, duration_ms=120)
+        # (lift_on_hover removed — too distracting)
 
         # ── Legacy animation refs (kept for backward compat) ─────
         self.loading_movie = None
