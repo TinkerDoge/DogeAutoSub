@@ -335,13 +335,32 @@ class Ui_MainWindow(object):
         statusRow.addWidget(self.etaLabel)
         alay.addLayout(statusRow)
 
+        # Placeholder for Phase B LogPanel
+        self.logPanelHost = QFrame()
+        self.logPanelHost.setObjectName("logPanelHost")
+        alay.addWidget(self.logPanelHost)
+
+        lay.addWidget(self.actionCard)
+
+        # ── Mascot strip (Phase C will swap this for MascotWidget) ──────
+        self.mascotCard = QFrame()
+        self.mascotCard.setObjectName("card")
+        self.mascotCard.setFrameShape(QFrame.Shape.StyledPanel)
+        mascotRow = QHBoxLayout(self.mascotCard)
+        mascotRow.setContentsMargins(12, 8, 12, 8)
+
         self.statusImage = QLabel()
         self.statusImage.setObjectName("statusImage")
         self.statusImage.setMaximumSize(QSize(130, 130))
         self.statusImage.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        alay.addWidget(self.statusImage, alignment=Qt.AlignmentFlag.AlignCenter)
+        mascotRow.addWidget(self.statusImage)
 
-        lay.addWidget(self.actionCard)
+        self.speechBubble = QLabel("")
+        self.speechBubble.setObjectName("speechBubble")
+        self.speechBubble.setWordWrap(True)
+        mascotRow.addWidget(self.speechBubble, 1)
+
+        lay.addWidget(self.mascotCard)
         lay.addStretch()
 
         self.tabWidget.addTab(self.subtitleTab, "📝 Subtitles")
