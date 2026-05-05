@@ -401,6 +401,11 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if self.loading_movie:
             self.statusImage.setMovie(self.loading_movie)
             self.loading_movie.start()
+        try:
+            from modules.animations import shimmer
+            self._shimmer_anim = shimmer(self.progressBar)
+        except Exception:
+            self._shimmer_anim = None
     
     def _on_task_complete(self):
         self.startButton.setEnabled(True)
@@ -410,6 +415,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.loading_movie.stop()
         if self.done_pixmap:
             self.statusImage.setPixmap(self.done_pixmap)
+        try:
+            if getattr(self, "_shimmer_anim", None):
+                self._shimmer_anim.stop()
+                self.progressBar.setStyleSheet("")
+                self._shimmer_anim = None
+        except Exception:
+            pass
         self.logPanel.notify_completion()
         try:
             self.statusImage.set_state("celebrate")

@@ -88,6 +88,7 @@ class _StepRow(QFrame):
         self.name = name
         self._state = "pending"
         self._start_ts: Optional[float] = None
+        self._phase_widget: Optional[QWidget] = None
         self.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
@@ -115,8 +116,29 @@ class _StepRow(QFrame):
     def _set_dot(self, color: str) -> None:
         self.dot.setStyleSheet(f"background:{color}; border-radius:5px;")
 
+    def set_active_widget(self, w: Optional[QWidget]) -> None:
+        """Swap in a phase-specific animated indicator beside the dot."""
+        self._clear_phase_widget()
+        if w is None:
+            return
+        self._phase_widget = w
+        self.dot.hide()
+        self.layout().insertWidget(0, w)
+        w.show()
+
+    def reset_indicator(self) -> None:
+        self._clear_phase_widget()
+        self.dot.show()
+
+    def _clear_phase_widget(self) -> None:
+        if self._phase_widget is not None:
+            self.layout().removeWidget(self._phase_widget)
+            self._phase_widget.deleteLater()
+            self._phase_widget = None
+
     def set_pending(self):
         self._state = "pending"
+        self.reset_indicator()
         self._set_dot(self.DOT_PENDING)
         self.nameLabel.setStyleSheet("color: #b0b0b0;")
         self.detailLabel.setText("")
@@ -133,6 +155,7 @@ class _StepRow(QFrame):
 
     def set_done(self, detail: str = ""):
         self._state = "done"
+        self.reset_indicator()
         self._set_dot(self.DOT_DONE)
         self.nameLabel.setStyleSheet("color: #202020;")
         if self._start_ts:
@@ -142,6 +165,7 @@ class _StepRow(QFrame):
 
     def set_error(self, detail: str = ""):
         self._state = "error"
+        self.reset_indicator()
         self._set_dot(self.DOT_ERROR)
         self.nameLabel.setStyleSheet("color: #e63946; font-weight: 600;")
         self.detailLabel.setText(detail or "error")
@@ -220,6 +244,12 @@ class LogPanel(QFrame):
         row = self._steps.get(step)
         if row:
             row.set_active()
+            try:
+                from modules.animations import make_phase_widget
+                w = make_phase_widget(step, row)
+                row.set_active_widget(w)
+            except Exception:
+                pass
         self._emit("step_start", step=step)
 
     def step_done(self, step: str, detail: str = "") -> None:
