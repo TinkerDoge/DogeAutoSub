@@ -1,0 +1,91 @@
+<h2>How should logging look?</h2>
+<p class="subtitle">Right now the app shows one status line and a progress bar. You said improve logging. Here are three styles — all fit the modernized Win95 frame.</p>
+
+<div class="cards">
+  <div class="card" data-choice="console" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#ece9d8; padding:10px; height:200px; font-family: 'Consolas', 'Courier New', monospace;">
+      <div style="background:#0c0c0c; border:1px solid #707070; border-radius:3px; padding:8px; height:100%; color:#cccccc; font-size:10px; line-height:1.4; box-shadow: inset 0 0 0 1px #1a1a1a;">
+        <div style="color:#5fb3ff;">[14:02:11] ▸ Loading whisper-turbo model...</div>
+        <div style="color:#7ed957;">[14:02:14] ✓ Model ready (2.3s)</div>
+        <div style="color:#5fb3ff;">[14:02:14] ▸ Extracting audio with ffmpeg</div>
+        <div style="color:#7ed957;">[14:02:18] ✓ Audio extracted (4.1s)</div>
+        <div style="color:#5fb3ff;">[14:02:18] ▸ Transcribing chunk 1/8...</div>
+        <div style="color:#ffd166;">[14:02:24] ⚡ chunk 1/8: 12 segments, 6.2s</div>
+        <div style="color:#5fb3ff;">[14:02:24] ▸ Transcribing chunk 2/8...</div>
+        <div style="color:#ffd166;">[14:02:31] ⚡ chunk 2/8: 14 segments, 6.8s</div>
+        <div style="color:#ff6b9d;">[14:02:31] 🐕 such wow. much progress.</div>
+        <div style="color:#5fb3ff;">[14:02:31] ▸ Transcribing chunk 3/8...<span style="background:#5fb3ff; color:#0c0c0c;">_</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Embedded Terminal Console</h3>
+      <p>Black panel inside the app frame. Color-coded levels (info / success / warn / error). Timestamps. Scrolls as work happens. Doge chimes in occasionally. Maximum info, classic dev-tool feel.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="timeline" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#ece9d8; padding:10px; height:200px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+      <div style="background:#fff; border:1px solid #a0a0a0; border-radius:4px; padding:6px; height:100%; font-size:10px; overflow:hidden;">
+        <div style="display:flex; gap:8px; padding:4px 0; border-bottom:1px dashed #d4d0c8;">
+          <span style="width:14px; height:14px; background:#7ed957; border-radius:50%; color:white; text-align:center; line-height:14px; font-size:9px;">✓</span>
+          <span style="flex:1;"><b>Audio extracted</b> · 4.1s</span>
+          <span style="color:#a0a0a0;">14:02:18</span>
+        </div>
+        <div style="display:flex; gap:8px; padding:4px 0; border-bottom:1px dashed #d4d0c8;">
+          <span style="width:14px; height:14px; background:#7ed957; border-radius:50%; color:white; text-align:center; line-height:14px; font-size:9px;">✓</span>
+          <span style="flex:1;"><b>Chunk 1/8</b> · 12 segments</span>
+          <span style="color:#a0a0a0;">14:02:24</span>
+        </div>
+        <div style="display:flex; gap:8px; padding:4px 0; border-bottom:1px dashed #d4d0c8;">
+          <span style="width:14px; height:14px; background:#7ed957; border-radius:50%; color:white; text-align:center; line-height:14px; font-size:9px;">✓</span>
+          <span style="flex:1;"><b>Chunk 2/8</b> · 14 segments</span>
+          <span style="color:#a0a0a0;">14:02:31</span>
+        </div>
+        <div style="display:flex; gap:8px; padding:4px 0; background:#fffbe5; border-radius:3px;">
+          <span style="width:14px; height:14px; background:#5fb3ff; border-radius:50%; color:white; text-align:center; line-height:14px; font-size:9px;">▸</span>
+          <span style="flex:1;"><b>Chunk 3/8</b> · transcribing...</span>
+          <span style="color:#a0a0a0;">14:02:31</span>
+        </div>
+        <div style="display:flex; gap:8px; padding:4px 0; opacity:0.4;">
+          <span style="width:14px; height:14px; background:#d4d0c8; border-radius:50%; text-align:center; line-height:14px; font-size:9px;">○</span>
+          <span style="flex:1;">Translate to Vietnamese</span>
+        </div>
+        <div style="display:flex; gap:8px; padding:4px 0; opacity:0.4;">
+          <span style="width:14px; height:14px; background:#d4d0c8; border-radius:50%; text-align:center; line-height:14px; font-size:9px;">○</span>
+          <span style="flex:1;">Save SRT</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Step Timeline</h3>
+      <p>Pipeline as a checklist. Each stage is a row with status dot + name + timing. Future steps shown greyed-out. Cleanest, most user-friendly. Less verbose detail.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#ece9d8; padding:10px; height:200px; font-family: 'Segoe UI', Tahoma, sans-serif;">
+      <div style="background:#fff; border:1px solid #a0a0a0; border-radius:4px; padding:6px; height:100%; font-size:10px;">
+        <div style="display:flex; gap:6px; padding:3px 0;">
+          <span style="width:12px; height:12px; background:#7ed957; border-radius:50%;"></span>
+          <span style="flex:1;"><b>Audio extracted</b> · 4.1s</span>
+        </div>
+        <div style="display:flex; gap:6px; padding:3px 0;">
+          <span style="width:12px; height:12px; background:#5fb3ff; border-radius:50%;"></span>
+          <span style="flex:1;"><b>Transcribing</b> · chunk 3/8</span>
+        </div>
+        <div style="background:#0c0c0c; color:#7ed957; border-radius:3px; padding:5px; margin-top:4px; height:90px; font-family:monospace; font-size:9px; line-height:1.3;">
+          <div>[14:02:24] chunk 2/8: 14 segments</div>
+          <div style="color:#ffd166;">[14:02:31] 🐕 such wow.</div>
+          <div style="color:#5fb3ff;">[14:02:31] chunk 3/8 → whisper</div>
+          <div>[14:02:33] vad: 38 voiced regions</div>
+          <div style="color:#5fb3ff;">[14:02:34] decoding...<span style="background:#7ed957;color:#0c0c0c;">_</span></div>
+        </div>
+        <div style="font-size:9px; color:#707070; margin-top:3px; text-align:right; cursor:pointer;">▼ Show details ▲ Hide</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Timeline + Collapsible Console (Recommended)</h3>
+      <p>Best of both. Top: clean pipeline timeline for at-a-glance progress. Bottom: collapsible terminal for power users who want raw logs. Default open in modernized Win95 — fits the desktop-app feel.</p>
+    </div>
+  </div>
+</div>

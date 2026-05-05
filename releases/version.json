@@ -1,11 +1,9 @@
 {
-  "version": "2.3.1",
-  "filename": "DogeAutoSub_v2.3.1.zip",
-  "notes": "MLAAS startup model refresh; curated translation model list; API tracing header",
+  "version": "2.3.4",
+  "filename": "DogeAutoSub_v2.3.4.zip",
+  "notes": "Fix update server URL to use dogeautosub.local mDNS hostname",
   "files": {
-    "AutoUI.py": "2819443770cd66aa95aa6043039647cd124e99646306eea44089eef5b94c143b",
-    "generate_v230.py": "def5460e861c17abe980afb2230ccf12648a50d5623a1815c801c5ce21053f48",
-    "_test_build.py": "0f063e55da5edc1ec84803ca2e485f7cf32c95fe66c40aa0d57adec30fc58ea6",
+    "AutoUI.py": "a7c4abae7ad3077573bf5f44cad8b33de43d615ddd0a02795187515daa688ed1",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
     "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
     "icons/drop-down-menu.png": "e4316d74c055d5fb52c940acec5b7a95066a5cce8ea85dc5935c65a8a07a16f4",
@@ -19,15 +17,15 @@
     "modules/constants.py": "766726643f591d1a0a53bc9379a07334966803fb2f1555bb822fac83b6ac6558",
     "modules/faster_whisper_engine.py": "c870f6a317ccb48de34a16f5ee1a77887deb1b081a12ec7d21cc9b610442cf71",
     "modules/marian_translator.py": "03731b135319fe948dda4319d71a4778352b08585537a533ee4a519045bfe2b8",
-    "modules/meeting_notes.py": "6412362dafc61437a07b3e4607d793761352a15f29a6753e59888870406a4834",
+    "modules/meeting_notes.py": "0e7fca7f49348b64bec5c17a033df5b30f8fb9ba08b8dddabef9133ebc77f7d0",
     "modules/meeting_notes_thread.py": "027424dc099874f8eafe4f7064450a3efc54651fce9a88af88fe33cff2c9dc44",
-    "modules/mlaas_client.py": "41aa391c785ecc31143e2dcece7c2c872c6cf6f8715f60637bf1838fb1327289",
+    "modules/mlaas_client.py": "cee107c3ea2459ef1b1f065410cee18b327d91216eecbba564046210bdabac14",
     "modules/styleSheetDark.css": "aa13d2fa5e28dbb04c459ff21fea8cb7ae881a53a13446691a3b3771d939fdbe",
     "modules/styleSheetLight.css": "a866bede844d911dc843bf66eab8eef64040001d36e453f8583b0eb4f52d5a73",
     "modules/subtitle_args.py": "20de6bac785c1bfd30e106d8c2d594b25a1e13b15f91c3852a0610089794ac7c",
     "modules/subtitle_thread.py": "e0191f4ddc387f752d6478da4607587cfa21f2318924a01f7984463ed48c8aa5",
-    "modules/translate_thread.py": "0eb59527f09a6401765220829b4dfeab95e8d4f0730318a66ea241911b4068b8",
-    "modules/ui_DogeAutoSub.py": "8b6f3c3d562509d55fcd83941b5dcf6d00656b432f529326f42ddea60f5ba2b2",
-    "modules/updater.py": "9128be5f4b586e377deee2ebf5d07068de8b44045ac928e18cd1b6fd364f7907"
+    "modules/translate_thread.py": "7523f06747a076f88e65589a289ab7da837613b198edd349f997a4647344a2a2",
+    "modules/ui_DogeAutoSub.py": "ba420b406afa6c1bd613763df04230fd168f950ef66e7143a234e0431a5dd1b8",
+    "modules/updater.py": "3b7a3aa04de4dbf3ab70e57dc9f800596b3b030fce62677b9d262cb04ef0d355"
   }
 }

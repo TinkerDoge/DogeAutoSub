@@ -1,0 +1,54 @@
+<h2>Animation & doge mascot improvements</h2>
+<p class="subtitle">You have 3 GIFs (start / loading / done). Multi-select what you want — these stack and complement each other.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="mascot-states" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>More mascot states + reactions</h3>
+      <p>Add <b>idle blink</b>, <b>thinking</b>, <b>celebrate</b> (jump/spin on done), <b>confused</b> (on error), <b>sleepy</b> (when idle for &gt;1min). Mascot reacts to events instead of looping the same gif. Speech bubbles with retro wisdom: "such wow", "much progress", "very SRT".</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ui-micro" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Micro-interactions on UI elements</h3>
+      <p>Button press depth (Win95 bevel actually inverts), tab switches with subtle slide, card hover lift, dropdown smooth-open. Progress bar gets an animated shimmer. Status dots pulse when active. Quick, smooth — never blocks input. ~150–200ms each.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="completion" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Completion celebration</h3>
+      <p>On task complete: confetti or pixel-doge "wow" particles burst, status card flashes green with a quick scale-bounce, mascot does the celebrate animation. Optional system sound chime (Win95 ding). Makes finishing feel rewarding.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="error-shake" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Error feedback (shake + sad-doge)</h3>
+      <p>On error: window does a brief shake (3 wobbles, 200ms total), error toast slides in from top, mascot switches to confused/sad state, log line glows red briefly. Familiar Win95-era "bonk" pattern, made polite.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="loading-detail" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Smarter loading visuals</h3>
+      <p>Replace single loading.gif with phase-aware indicators: spinner during model load, animated audio-waveform during transcription, translation arrow flowing src→dst, save-disk icon writing. Each phase visually distinct so users know what's happening.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="boot" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content">
+      <h3>Retro boot splash</h3>
+      <p>1.5s boot screen on app start: Win95-style splash with doge logo, version, loading dots. Gives the app a "real software" feel and hides the cold-start lag of importing torch/whisper. Skippable on click.</p>
+    </div>
+  </div>
+
+</div>

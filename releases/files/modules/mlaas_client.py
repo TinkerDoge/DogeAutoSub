@@ -5,13 +5,14 @@ Integrates with the internal Virtuos MLAAS platform for:
   - Text Translation: POST /proxy/anthropic/v1/messages (Claude Sonnet — cost-efficient)
   - Text Summarization: POST /proxy/anthropic/v1/messages (Claude Sonnet — high quality)
 
-Auth: x-api-key header with embedded API key (obfuscated).
+Auth: Bearer JWT (preferred, user-supplied, ~2hr expiry) or x-api-key (embedded, long-lived).
 """
 
 import base64
 import json
 import os
 import re
+import time
 import urllib.request
 import urllib.error
 from dataclasses import dataclass
@@ -22,16 +23,90 @@ from typing import Callable, List, Optional
 # ── Model List Cache ────────────────────────────────────────────
 _MLAAS_MODEL_LIST = []
 _MLAAS_MODEL_LIST_LAST_ERROR = None
+_MODEL_LIST_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mlaas_models_cache.json")
+_MODEL_LIST_CACHE_TTL = 86400  # 24h
+
+
+def _write_model_list_cache(models: list) -> None:
+    try:
+        with open(_MODEL_LIST_CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump({"fetched_at": time.time(), "models": models}, f)
+    except Exception as e:
+        print(f"Warning: could not write model list cache: {e}")
+
+
+def load_cached_mlaas_model_list_from_disk(max_age_seconds: int = _MODEL_LIST_CACHE_TTL) -> list:
+    """Populate the in-memory model list from disk cache if fresh. Returns the list (may be empty)."""
+    global _MLAAS_MODEL_LIST
+    if not os.path.exists(_MODEL_LIST_CACHE_PATH):
+        return []
+    try:
+        with open(_MODEL_LIST_CACHE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        fetched_at = data.get("fetched_at", 0)
+        models = data.get("models", [])
+        if not isinstance(models, list):
+            return []
+        if max_age_seconds > 0 and (time.time() - fetched_at) > max_age_seconds:
+            # Stale, but still better than nothing while we refetch in background
+            _MLAAS_MODEL_LIST = models
+            return models
+        _MLAAS_MODEL_LIST = models
+        return models
+    except Exception as e:
+        print(f"Warning: could not read model list cache: {e}")
+        return []
+
+
+def _bearer_token_config_path() -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "mlaas_config.json")
+
+
+def save_bearer_token(token: str):
+    """Persist bearer token to mlaas_config.json for reuse within the session."""
+    path = _bearer_token_config_path()
+    try:
+        data = {}
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                data = json.load(f)
+        data["bearer_token"] = token.strip()
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Failed to save bearer token: {e}")
+
+
+def load_bearer_token() -> str:
+    """Load persisted bearer token from mlaas_config.json."""
+    path = _bearer_token_config_path()
+    try:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                data = json.load(f)
+            return data.get("bearer_token", "").strip()
+    except Exception:
+        pass
+    return ""
+
+
+def _auth_headers(config: 'MLAASConfig') -> dict:
+    """Return the correct auth header dict based on config."""
+    token = config.bearer_token.strip() if config.bearer_token else ""
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {"x-api-key": config.api_key}
+
 
 def fetch_mlaas_model_list(config: 'MLAASConfig' = None) -> list:
-    """Fetch available models from MLAAS and cache them."""
+    """Fetch available models from MLAAS and cache them (in-memory + disk)."""
     global _MLAAS_MODEL_LIST, _MLAAS_MODEL_LIST_LAST_ERROR
     config = config or MLAASConfig.from_env()
     url = f"{config.base_url.rstrip('/')}/proxy/openai/v1/models"
     headers = {
         "Accept": "application/json",
-        "x-api-key": config.api_key,
         "x-application-name": MLAAS_APP_NAME,
+        **_auth_headers(config),
     }
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
@@ -39,9 +114,11 @@ def fetch_mlaas_model_list(config: 'MLAASConfig' = None) -> list:
             data = json.loads(response.read().decode("utf-8"))
             _MLAAS_MODEL_LIST = data.get("data", [])
             _MLAAS_MODEL_LIST_LAST_ERROR = None
+            if _MLAAS_MODEL_LIST:
+                _write_model_list_cache(_MLAAS_MODEL_LIST)
     except Exception as e:
-        _MLAAS_MODEL_LIST = []
         _MLAAS_MODEL_LIST_LAST_ERROR = str(e)
+        # Don't clobber an existing in-memory cache on transient failure
     return _MLAAS_MODEL_LIST
 
 def get_cached_mlaas_model_list() -> list:
@@ -64,7 +141,7 @@ OPENAI_MODEL_TRANSLATION = "gpt-4o-mini"
 # Batching config
 TRANSLATION_BATCH_SIZE = 20  # Max segments per API call (adaptive packing may use fewer)
 TRANSLATION_CHUNK_SIZE = 200  # Segments per translation chunk (resets context for long transcripts)
-TRANSLATION_BATCH_CHAR_BUDGET = 2400  # Soft cap to avoid oversized prompts/timeouts
+TRANSLATION_BATCH_CHAR_BUDGET = 4500  # Soft cap to avoid oversized prompts/timeouts
 
 # The key is base64-encoded to prevent casual reading in source code.
 # It is decoded at runtime when needed.
@@ -129,28 +206,32 @@ def get_masked_key(api_key: str) -> str:
 @dataclass
 class MLAASConfig:
     """Configuration for MLAAS API connection.
-    
-    Auth: x-api-key header with embedded/obfuscated API key.
+
+    Auth priority: bearer_token (user JWT, ~2hr expiry) > api_key (embedded, long-lived).
     """
     api_key: str = ""
     base_url: str = MLAAS_BASE_URL
+    bearer_token: str = ""
 
     def is_configured(self) -> bool:
-        return bool(self.api_key.strip())
+        return bool(self.api_key.strip() or self.bearer_token.strip())
 
     @classmethod
     def from_env(cls) -> "MLAASConfig":
-        """Create config with the embedded API key (or .env override)."""
-        return cls(api_key=get_api_key())
+        """Create config from embedded API key plus any persisted bearer token."""
+        return cls(
+            api_key=get_api_key(),
+            bearer_token=load_bearer_token(),
+        )
 
 
 # ── API Calls ───────────────────────────────────────────────────
 
 def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: int = 120) -> dict:
-    """Make a POST request to MLAAS API using x-api-key auth."""
+    """Make a POST request to MLAAS API, preferring Bearer JWT then falling back to x-api-key."""
     if not config.is_configured():
         raise ValueError(
-            "MLAAS API key not available. Contact the app developer."
+            "MLAAS not configured. Provide an API key or paste a Bearer token."
         )
 
     url = f"{config.base_url.rstrip('/')}{endpoint}"
@@ -158,37 +239,54 @@ def _mlaas_request(endpoint: str, payload: dict, config: MLAASConfig, timeout: i
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "x-api-key": config.api_key,
         "x-application-name": MLAAS_APP_NAME,
+        **_auth_headers(config),
     }
 
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
+    body_bytes = json.dumps(payload).encode("utf-8")
+    max_429_retries = 2
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        if e.code == 401:
-            raise RuntimeError(
-                "Authentication failed (401). The API key may be invalid or expired."
-            )
-        elif e.code == 429:
-            raise RuntimeError("Rate limit exceeded (429). Please wait and try again.")
-        else:
-            detail = ""
-            try:
-                detail = json.loads(body).get("detail", body)
-            except Exception:
-                detail = body
-            raise RuntimeError(f"MLAAS API error (HTTP {e.code}): {detail}")
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Cannot connect to MLAAS API: {e.reason}")
+    for attempt in range(max_429_retries + 1):
+        req = urllib.request.Request(
+            url,
+            data=body_bytes,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+            if e.code == 429 and attempt < max_429_retries:
+                retry_after = e.headers.get("Retry-After") if e.headers else None
+                try:
+                    delay = float(retry_after) if retry_after else 2.0 * (attempt + 1)
+                except (TypeError, ValueError):
+                    delay = 2.0 * (attempt + 1)
+                delay = min(max(delay, 1.0), 30.0)
+                print(f"MLAAS 429 rate-limit hit, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_429_retries})")
+                time.sleep(delay)
+                continue
+            if e.code == 401:
+                if config.bearer_token.strip():
+                    raise RuntimeError(
+                        "Bearer token rejected (401). It may have expired — get a fresh one from mlaas.virtuosgames.com/auth/token"
+                    )
+                raise RuntimeError(
+                    "Authentication failed (401). The API key may be invalid or expired."
+                )
+            elif e.code == 429:
+                raise RuntimeError("Rate limit exceeded (429). Try using a personal Bearer token.")
+            else:
+                detail = ""
+                try:
+                    detail = json.loads(body).get("detail", body)
+                except Exception:
+                    detail = body
+                raise RuntimeError(f"MLAAS API error (HTTP {e.code}): {detail}")
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Cannot connect to MLAAS API: {e.reason}")
 
 
 def _parse_anthropic_response(result: dict) -> str:
@@ -223,16 +321,19 @@ def translate_text_mlaas(
     payload = {
         "model": ANTHROPIC_MODEL_TRANSLATION,
         "max_tokens": 1024,
-        "messages": [
+        "temperature": 0.2,
+        "system": [
             {
-                "role": "user",
-                "content": (
-                    f"Translate to {target_lang_name}. "
-                    "Fix any obvious speech-to-text errors before translating. "
-                    "Return ONLY the translation, nothing else.\n\n"
-                    f"{text}"
+                "type": "text",
+                "text": (
+                    f"Translate the user's text to {target_lang_name}. "
+                    "Return ONLY the translation, nothing else."
                 ),
+                "cache_control": {"type": "ephemeral"},
             },
+        ],
+        "messages": [
+            {"role": "user", "content": text},
         ],
     }
 
@@ -253,16 +354,20 @@ def _translate_batch_mlaas(
     payload = {
         "model": ANTHROPIC_MODEL_TRANSLATION,
         "max_tokens": 2048,
-        "messages": [
+        "temperature": 0.2,
+        "system": [
             {
-                "role": "user",
-                "content": (
-                    f"Translate each numbered line to {target_lang_name}. "
-                    "These are subtitle lines from speech-to-text — fix obvious transcription errors. "
-                    "Return ONLY the translations in the same [N] format, one per line.\n\n"
-                    f"{numbered}"
+                "type": "text",
+                "text": (
+                    f"Translate each numbered subtitle line to {target_lang_name}. "
+                    "Return ONLY the translations in the same [N] format, one per line. "
+                    "Preserve numbering exactly."
                 ),
+                "cache_control": {"type": "ephemeral"},
             },
+        ],
+        "messages": [
+            {"role": "user", "content": numbered},
         ],
     }
 
@@ -470,17 +575,16 @@ def translate_text_openai(
         "model": selected_model,
         "messages": [
             {
-                "role": "user",
+                "role": "system",
                 "content": (
-                    f"Translate to {target_lang_name}. "
-                    "Fix any obvious speech-to-text errors before translating. "
-                    "Return ONLY the translation, nothing else.\n\n"
-                    f"{text}"
+                    f"Translate the user's text to {target_lang_name}. "
+                    "Return ONLY the translation, nothing else."
                 ),
             },
+            {"role": "user", "content": text},
         ],
         "max_tokens": 1024,
-        "temperature": 0.3,
+        "temperature": 0.2,
     }
 
     result = _mlaas_request("/proxy/openai/v1/chat/completions", payload, config, timeout=30)
@@ -503,17 +607,17 @@ def _translate_batch_openai(
         "model": selected_model,
         "messages": [
             {
-                "role": "user",
+                "role": "system",
                 "content": (
-                    f"Translate each numbered line to {target_lang_name}. "
-                    "These are subtitle lines from speech-to-text — fix obvious transcription errors. "
-                    "Return ONLY the translations in the same [N] format, one per line.\n\n"
-                    f"{numbered}"
+                    f"Translate each numbered subtitle line to {target_lang_name}. "
+                    "Return ONLY the translations in the same [N] format, one per line. "
+                    "Preserve numbering exactly."
                 ),
             },
+            {"role": "user", "content": numbered},
         ],
         "max_tokens": 2048,
-        "temperature": 0.3,
+        "temperature": 0.2,
     }
 
     result = _mlaas_request("/proxy/openai/v1/chat/completions", payload, config, timeout=60)
@@ -664,18 +768,24 @@ def summarize_text_mlaas(
     if progress_callback:
         progress_callback("Sending to Claude for summarization…")
 
-    lang_hint = f"\n\nPlease write the summary in {language}." if language else ""
+    system_text = MEETING_NOTES_SYSTEM_PROMPT
+    if language:
+        system_text = f"{system_text}\n\nWrite the summary in {language}."
 
     payload = {
         "model": ANTHROPIC_MODEL_SUMMARIZATION,
         "max_tokens": 4096,
+        "system": [
+            {
+                "type": "text",
+                "text": system_text,
+                "cache_control": {"type": "ephemeral"},
+            },
+        ],
         "messages": [
             {
                 "role": "user",
-                "content": (
-                    f"{MEETING_NOTES_SYSTEM_PROMPT}{lang_hint}\n\n"
-                    f"Here is the meeting transcript:\n\n{text}"
-                ),
+                "content": f"Here is the meeting transcript:\n\n{text}",
             },
         ],
     }

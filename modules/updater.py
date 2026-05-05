@@ -12,10 +12,10 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Current app version ─────────────────────────────────────────
-APP_VERSION = "2.3.1"
+APP_VERSION = "2.3.4"
 
 # Default update server — override in updater_config.json
-DEFAULT_UPDATE_URL = "http://10.76.171.156:8100"
+DEFAULT_UPDATE_URL = "http://dogeautosub.local:8100"
 
 
 @dataclass
@@ -377,10 +377,10 @@ def generate_manifest(
         "files": {},
     }
 
-    skip_dirs = {".venv", "__pycache__", ".git", ".github", ".agents", ".vscode", "build", "dist",
-                 "DOCs", "releases", "temp", "models", "CUDA", "ffmpeg",
+    skip_dirs = {".venv", "__pycache__", ".git", ".github", ".agents", ".claude", ".vscode",
+                 "build", "dist", "DOCs", "releases", "temp", "models", "CUDA", "ffmpeg",
                  "marian_cache", "QTDesign", ".no_exist", "snapshots"}
-    skip_files = {"updater_config.json", "mlaas_config.json",
+    skip_files = {"updater_config.json", "mlaas_config.json", "mlaas_models_cache.json",
                   "Thumbs.db", ".gitignore", "serve_updates.py",
                   "build.bat", "DogeAutoSubApp.spec", "requirements.txt",
                   "subtitle_translator_app.py"}

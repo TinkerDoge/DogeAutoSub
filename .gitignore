@@ -11,3 +11,6 @@ build/
 dist/
 modules/downloadModel.py
 *.zip
+run_claude_code 3.bat
+modules/mlaas_models_cache.json
+modules/mlaas_config.json

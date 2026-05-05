@@ -1,19 +1,13 @@
 """
 Meeting Notes module for DogeAutoSub.
-Provides DOCX transcript parsing and LLM-based summarization framework.
-
-The LLM API integration is a framework/stub — the actual internal API
-endpoint will be configured later by the user.
+Parses meeting transcripts (DOCX/TXT/SRT/VTT) into speaker blocks. Summarization
+is handled by `summarize_text_mlaas` in modules.mlaas_client.
 """
 
-import json
 import os
 import re
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
-
-
-APPLICATION_NAME = "DogeAutoSub"
+from dataclasses import dataclass
+from typing import List
 
 
 @dataclass
@@ -22,57 +16,6 @@ class SpeakerBlock:
     speaker: str
     text: str
     timestamp: str = ""
-
-
-@dataclass
-class LLMConfig:
-    """Configuration for the LLM API connection."""
-    api_url: str = ""
-    api_key: str = ""
-    model_name: str = ""
-    system_prompt: str = (
-        "You are a professional meeting note-taker. Given the following meeting transcript "
-        "with speaker names and their dialogue, create a well-structured summary that includes:\n"
-        "1. **Meeting Overview** - Brief summary of what the meeting was about\n"
-        "2. **Key Discussion Points** - Main topics discussed\n"
-        "3. **Action Items** - Tasks assigned with responsible persons\n"
-        "4. **Decisions Made** - Any decisions reached during the meeting\n"
-        "5. **Follow-ups** - Items that need follow-up\n\n"
-        "Keep the summary concise but comprehensive."
-    )
-    max_tokens: int = 2048
-    temperature: float = 0.3
-
-    def is_configured(self) -> bool:
-        """Check if the LLM API is properly configured."""
-        return bool(self.api_url and self.api_key and self.model_name)
-
-    def save_to_file(self, filepath: str):
-        """Save config to a JSON file."""
-        data = {
-            "api_url": self.api_url,
-            "api_key": self.api_key,
-            "model_name": self.model_name,
-            "system_prompt": self.system_prompt,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-        }
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-    @classmethod
-    def load_from_file(cls, filepath: str) -> "LLMConfig":
-        """Load config from a JSON file."""
-        if not os.path.exists(filepath):
-            return cls()
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
-        except Exception as e:
-            print(f"Error loading LLM config: {e}")
-            return cls()
 
 
 def parse_meeting_transcript(file_path: str) -> List[SpeakerBlock]:
@@ -327,87 +270,3 @@ def format_transcript_for_llm(blocks: List[SpeakerBlock]) -> str:
     return "\n\n".join(lines)
 
 
-def summarize_with_llm(
-    transcript: str,
-    config: LLMConfig,
-    progress_callback: Optional[Callable[[str], None]] = None,
-) -> str:
-    """
-    Send transcript to an LLM API for summarization.
-    
-    Uses OpenAI-compatible API format (works with OpenAI, Ollama, LM Studio, 
-    and most internal APIs).
-    
-    Args:
-        transcript: Formatted transcript text
-        config: LLM API configuration
-        progress_callback: Optional callback for status updates
-        
-    Returns:
-        Generated summary text
-    """
-    if not config.is_configured():
-        raise ValueError(
-            "LLM API is not configured. Please set the API URL, API key, and model name."
-        )
-    
-    if progress_callback:
-        progress_callback("Connecting to LLM API...")
-    
-    try:
-        import urllib.request
-        import urllib.error
-        
-        # Build the request in OpenAI-compatible format
-        payload = {
-            "model": config.model_name,
-            "messages": [
-                {"role": "system", "content": config.system_prompt},
-                {"role": "user", "content": f"Here is the meeting transcript:\n\n{transcript}"},
-            ],
-            "max_tokens": config.max_tokens,
-            "temperature": config.temperature,
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config.api_key}",
-            "x-application-name": APPLICATION_NAME,
-        }
-        
-        # Ensure URL ends with /chat/completions
-        api_url = config.api_url.rstrip("/")
-        if not api_url.endswith("/chat/completions"):
-            if not api_url.endswith("/v1"):
-                api_url += "/v1"
-            api_url += "/chat/completions"
-        
-        if progress_callback:
-            progress_callback("Sending transcript to LLM...")
-        
-        req = urllib.request.Request(
-            api_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        
-        with urllib.request.urlopen(req, timeout=120) as response:
-            result = json.loads(response.read().decode("utf-8"))
-        
-        if progress_callback:
-            progress_callback("Processing response...")
-        
-        # Extract the response text
-        if "choices" in result and len(result["choices"]) > 0:
-            return result["choices"][0]["message"]["content"]
-        else:
-            return f"Unexpected API response format: {json.dumps(result, indent=2)}"
-    
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        raise RuntimeError(f"LLM API error (HTTP {e.code}): {error_body}")
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Cannot connect to LLM API: {e.reason}")
-    except Exception as e:
-        raise RuntimeError(f"LLM API call failed: {e}")

@@ -39,8 +39,8 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow: QMainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(720, 1080)
-        MainWindow.setMinimumSize(QSize(720, 1080))
+        MainWindow.resize(650, 900)
+        MainWindow.setMinimumSize(QSize(650, 900))
         MainWindow.setMaximumSize(QSize(720, 1080))
         MainWindow.setWindowTitle("DogeAutoSub")
 
@@ -88,7 +88,7 @@ class Ui_MainWindow(object):
             b.setAlignment(Qt.AlignmentFlag.AlignCenter)
             ttl.addWidget(b)
 
-        outer.addWidget(self.fauxTitleBar)
+        #outer.addWidget(self.fauxTitleBar)
 
         # ── Cosmetic menu bar ────────────────────────────────────────────
         self.menuBarFrame = QFrame()

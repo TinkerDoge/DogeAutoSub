@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit *)",
+      "Bash(python -m pytest tests/test_theme_tokens.py -v)",
+      "Bash(python scripts/regen_themes.py)",
+      "Bash(python -m pytest tests/test_css_loads.py -v)",
+      "Bash(python -m pytest tests/test_ui_imports.py -v)",
+      "Bash(python -c ' *)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(git tag *)",
+      "Bash(python -m pytest tests/test_log_writer.py -v)",
+      "Bash(python -m pytest tests/test_log_panel_logic.py -v)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('AutoUI.py'\\).read\\(\\)\\); print\\('AutoUI.py parses OK'\\)\")",
+      "Bash(python -m pytest tests/test_animations.py -v)",
+      "Bash(python -m pytest tests/test_toast.py -v)",
+      "Bash(python -m pytest tests/test_mascot.py -v)",
+      "Bash(mkdir -p icons/mascot)",
+      "Bash(touch icons/mascot/.gitkeep)",
+      "Bash(echo \"\")",
+      "Bash(python -m pytest tests/ -q --tb=short)",
+      "Bash(python -m pytest tests/ -v --tb=short)"
+    ]
+  }
+}

@@ -30,6 +30,8 @@ import socket
 import socketserver
 import sys
 
+MDNS_HOSTNAME = "dogeautosub.local."  # trailing dot = FQDN
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RELEASES_DIR = os.path.join(SCRIPT_DIR, "releases")
@@ -104,6 +106,33 @@ def generate_release(version: str, notes: str = ""):
     print(f"  Run: python serve_updates.py\n")
 
 
+def _start_mdns(local_ip: str, port: int):
+    """
+    Advertise this server as dogeautosub.local via mDNS.
+    Clients on the same LAN can reach it without knowing the IP.
+    Requires: pip install zeroconf
+    """
+    try:
+        from zeroconf import Zeroconf, ServiceInfo
+        info = ServiceInfo(
+            "_http._tcp.local.",
+            "DogeAutoSub._http._tcp.local.",
+            addresses=[socket.inet_aton(local_ip)],
+            port=port,
+            server=MDNS_HOSTNAME,
+        )
+        zc = Zeroconf()
+        zc.register_service(info)
+        return zc, info
+    except ImportError:
+        print(f"  mDNS:    ⚠ zeroconf not installed — clients must use IP directly")
+        print(f"           Install with: pip install zeroconf")
+        return None, None
+    except Exception as e:
+        print(f"  mDNS:    ⚠ Failed to register ({e})")
+        return None, None
+
+
 def start_server(port: int):
     """Start the HTTP update server."""
     os.makedirs(RELEASES_DIR, exist_ok=True)
@@ -124,12 +153,17 @@ def start_server(port: int):
         allow_reuse_address = True
 
     with ReusableTCPServer(("0.0.0.0", port), handler) as httpd:
+        zc, mdns_info = _start_mdns(local_ip, port)
+        mdns_name = MDNS_HOSTNAME.rstrip(".")
+
         print(f"")
         print(f"  ╔══════════════════════════════════════════════════╗")
         print(f"  ║  DogeAutoSub Update Server                       ║")
         print(f"  ╠══════════════════════════════════════════════════╣")
         print(f"  ║  Serving:  {RELEASES_DIR:<38}                    ║")
-        print(f"  ║  URL:      http://{local_ip}:{port:<24}          ║")
+        print(f"  ║  IP:       http://{local_ip}:{port:<24}          ║")
+        if zc:
+            print(f"  ║  mDNS:     http://{mdns_name}:{port:<20}          ║")
         print(f"  ║  Mode:     Delta Patch (modified files only)     ║")
         print(f"  ╚══════════════════════════════════════════════════╝")
         print(f"")
@@ -140,6 +174,10 @@ def start_server(port: int):
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\n  Server stopped.")
+        finally:
+            if zc and mdns_info:
+                zc.unregister_service(mdns_info)
+                zc.close()
 
 
 def main():

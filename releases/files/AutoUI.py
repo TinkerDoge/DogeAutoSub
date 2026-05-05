@@ -34,7 +34,11 @@ from PySide6.QtCore import QThread, QUrl, Qt, Signal
 from modules import ui_DogeAutoSub
 from modules.constants import MODEL_INFO, LANGUAGE_CODES_AI, MODEL_TYPES, TRANSLATION_ENGINES, TRANSLATION_ENGINES_SUBTITLE_ONLY
 from modules.subtitle_args import SubtitleArgs
-from modules.mlaas_client import MLAASConfig, fetch_mlaas_model_list, translate_segments_mlaas, summarize_text_mlaas, get_masked_key, get_api_key
+from modules.mlaas_client import (
+    MLAASConfig, fetch_mlaas_model_list, translate_segments_mlaas,
+    summarize_text_mlaas, get_masked_key, get_api_key,
+    load_cached_mlaas_model_list_from_disk, save_bearer_token,
+)
 from modules.updater import APP_VERSION, check_for_update, download_and_apply_update, restart_app
 
 from modules.subtitle_thread import SubtitleThread, ThroughputTracker, _lang_code
@@ -99,6 +103,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         
+        # ── Pre-load theme stylesheets (avoid disk IO per toggle) ─
+        self._theme_css = {}
+        for theme_name, filename in (("Dark", "styleSheetDark.css"), ("Light", "styleSheetLight.css")):
+            path = os.path.join(SCRIPT_DIR, "modules", filename)
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        self._theme_css[theme_name] = f.read()
+                except Exception as e:
+                    print(f"Could not load theme {theme_name}: {e}")
+
         # ── Load dark theme ─────────────────────────────────────
         self._load_theme("Dark")
         
@@ -129,7 +144,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         # ── Populate dropdowns ──────────────────────────────────
         self._setup_model_dropdown()
         self._setup_language_dropdowns()
-        fetch_mlaas_model_list(self.mlaas_config)
+        # Load cached model list from disk (instant). Background refresh runs after window shows.
+        load_cached_mlaas_model_list_from_disk()
         self._setup_translation_engines()
         
         # ── Connect signals ─────────────────────────────────────
@@ -149,23 +165,26 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.selectTransFileBtn.clicked.connect(self._select_trans_file)
         self.translateFileBtn.clicked.connect(self._start_file_translation)
         self.saveTransBtn.clicked.connect(self._save_translation)
-        
-        masked = get_masked_key(self.mlaas_config.api_key)
-        if self.mlaas_config.is_configured():
-            self.mlaasStatusLabel.setText(f"✅ DOGE AUTO SUB API PRO MAX")
-            self.mlaasStatusLabel.setStyleSheet("color: #4CAF50;")
-        else:
-            self.mlaasStatusLabel.setText("❌ No API key — add MLAAS_API to .env")
-            self.mlaasStatusLabel.setStyleSheet("color: #f44336;")
+
+        # Bearer token UI signals
+        self.getTokenBtn.clicked.connect(self._open_token_page)
+        self.bearerTokenEdit.textChanged.connect(self._on_bearer_token_changed)
+
+        # Restore persisted bearer token into the text field
+        if self.mlaas_config.bearer_token:
+            self.bearerTokenEdit.setText(self.mlaas_config.bearer_token)
+
+        self._update_mlaas_status_label()
         
         # ── Set window title with version ───────────────────
         self.setWindowTitle(f"DogeAutoSub v{APP_VERSION}")
         self.versionLabel.setText(f"v{APP_VERSION}")
         
-        # ── Check for updates (non-blocking) ────────────────
+        # ── Check for updates + refresh model list (non-blocking) ─
         from PySide6.QtCore import QTimer
         QTimer.singleShot(2000, self._check_for_updates)
-        
+        QTimer.singleShot(500, self._refresh_models_async)
+
         print(f"DogeAutoSub v{APP_VERSION} initialized successfully")
     
     # ── Dropdown Setup ──────────────────────────────────────────
@@ -264,11 +283,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
     # ── Theme ───────────────────────────────────────────────────
     
     def _load_theme(self, theme: str):
-        filename = "styleSheetDark.css" if theme == "Dark" else "styleSheetLight.css"
-        path = os.path.join(SCRIPT_DIR, "modules", filename)
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                self.setStyleSheet(f.read())
+        css = self._theme_css.get(theme)
+        if css is not None:
+            self.setStyleSheet(css)
         self.current_theme = theme
     
     def _toggle_theme(self):
@@ -505,8 +522,64 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
     
 
     
+    # ── Bearer Token ─────────────────────────────────────────────
+
+    def _open_token_page(self):
+        QDesktopServices.openUrl(QUrl("https://mlaas.virtuosgames.com/auth/token"))
+
+    def _on_bearer_token_changed(self, text: str):
+        self.mlaas_config.bearer_token = text.strip()
+        save_bearer_token(text.strip())
+        self._update_mlaas_status_label()
+
+    def _update_mlaas_status_label(self):
+        if self.mlaas_config.bearer_token.strip():
+            self.mlaasStatusLabel.setText("✅ Bearer token active")
+            self.mlaasStatusLabel.setStyleSheet("color: #4CAF50;")
+        elif self.mlaas_config.api_key.strip():
+            self.mlaasStatusLabel.setText("✅ DOGE AUTO SUB API PRO MAX")
+            self.mlaasStatusLabel.setStyleSheet("color: #4CAF50;")
+        else:
+            self.mlaasStatusLabel.setText("❌ No API key — add MLAAS_API to .env")
+            self.mlaasStatusLabel.setStyleSheet("color: #f44336;")
+
+    # ── Background MLAAS Model Refresh ──────────────────────────
+
+    def _refresh_models_async(self):
+        """Fetch the latest MLAAS model list off the UI thread; refresh dropdowns when done."""
+        config = self.mlaas_config
+
+        class ModelFetchThread(QThread):
+            finished_ok = Signal()
+
+            def run(self):
+                try:
+                    fetch_mlaas_model_list(config)
+                    self.finished_ok.emit()
+                except Exception as e:
+                    print(f"MLAAS model refresh failed: {e}")
+
+        self._model_fetch_thread = ModelFetchThread()
+        self._model_fetch_thread.finished_ok.connect(self._on_models_refreshed)
+        self._model_fetch_thread.start()
+
+    def _on_models_refreshed(self):
+        """Re-populate engine dropdowns with the freshly-fetched model list."""
+        # Preserve current selections so the user doesn't lose their choice
+        current_target = self.target_engine.currentText() if self.target_engine.count() else ""
+        current_trans = self.trans_engine.currentText() if self.trans_engine.count() else ""
+        self._setup_translation_engines()
+        if current_target:
+            idx = self.target_engine.findText(current_target)
+            if idx >= 0:
+                self.target_engine.setCurrentIndex(idx)
+        if current_trans:
+            idx = self.trans_engine.findText(current_trans)
+            if idx >= 0:
+                self.trans_engine.setCurrentIndex(idx)
+
     # ── Auto-Update ─────────────────────────────────────────────
-    
+
     def _check_for_updates(self):
         """Check for updates in a background thread (non-blocking)."""
         class UpdateCheckThread(QThread):

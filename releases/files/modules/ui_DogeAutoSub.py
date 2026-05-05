@@ -211,20 +211,41 @@ class Ui_MainWindow(object):
         mlaasFrame = QFrame()
         mlaasFrame.setObjectName("fileCard")
         mlaasFrame.setFrameShape(QFrame.Shape.StyledPanel)
-        mlaasLayout = QHBoxLayout(mlaasFrame)
+        mlaasLayout = QVBoxLayout(mlaasFrame)
         mlaasLayout.setContentsMargins(8, 6, 8, 6)
-        mlaasLayout.setSpacing(8)
+        mlaasLayout.setSpacing(4)
 
+        mlaasTopRow = QHBoxLayout()
+        mlaasTopRow.setSpacing(8)
         mlaasTitle = QLabel("🔑 MLAAS API")
         mlaasTitle.setFont(self.font_title)
         mlaasTitle.setObjectName("sectionTitle")
-        mlaasLayout.addWidget(mlaasTitle)
+        mlaasTopRow.addWidget(mlaasTitle)
 
         self.mlaasStatusLabel = QLabel("Loading…")
         self.mlaasStatusLabel.setFont(self.font_body)
         self.mlaasStatusLabel.setStyleSheet("color: #888;")
-        mlaasLayout.addWidget(self.mlaasStatusLabel)
-        mlaasLayout.addStretch()
+        mlaasTopRow.addWidget(self.mlaasStatusLabel)
+        mlaasTopRow.addStretch()
+        mlaasLayout.addLayout(mlaasTopRow)
+
+        mlaasBearerRow = QHBoxLayout()
+        mlaasBearerRow.setSpacing(6)
+        self.bearerTokenEdit = QLineEdit()
+        self.bearerTokenEdit.setPlaceholderText("Paste Bearer JWT token here (optional, overrides API key)…")
+        self.bearerTokenEdit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.bearerTokenEdit.setFont(self.font_body)
+        self.bearerTokenEdit.setToolTip(
+            "Personal JWT token from mlaas.virtuosgames.com/auth/token\n"
+            "Expires every ~2 hours. Use when the shared API key hits rate limits."
+        )
+        mlaasBearerRow.addWidget(self.bearerTokenEdit, 1)
+        self.getTokenBtn = QPushButton("🔗 Get Token")
+        self.getTokenBtn.setFont(self.font_body)
+        self.getTokenBtn.setFixedWidth(100)
+        self.getTokenBtn.setToolTip("Open the MLAAS token generator in your browser")
+        mlaasBearerRow.addWidget(self.getTokenBtn)
+        mlaasLayout.addLayout(mlaasBearerRow)
 
         settingsLayout.addWidget(mlaasFrame)
 

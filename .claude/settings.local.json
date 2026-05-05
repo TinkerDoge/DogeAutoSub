@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"z:\\\\DogeAutoSub\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in \\('AutoUI.py','modules/mlaas_client.py','modules/translate_thread.py','modules/meeting_notes.py'\\)]; print\\('syntax OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(bash \"C:/Users/vu.pham/.claude/skills/brainstorming/scripts/start-server.sh\" --project-dir \"z:/DogeAutoSub\")",
+      "Bash(mkdir -p z:/DogeAutoSub/docs/superpowers/specs && ls z:/DogeAutoSub/docs/ 2>&1)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Add design spec: Win95-modernized redesign with phased rollout *)",
+      "Bash(pip install *)",
+      "Bash(python -m pytest)"
+    ],
+    "additionalDirectories": [
+      "z:\\DogeAutoSub\\docs\\superpowers"
+    ]
+  }
+}
