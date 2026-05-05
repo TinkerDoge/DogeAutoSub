@@ -212,6 +212,15 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.setWindowTitle(f"DogeAutoSub v{APP_VERSION}")
         self.versionLabel.setText(f"v{APP_VERSION}")
         
+        # ── View menu ─────────────────────────────────────────────
+        self._setup_view_menu()
+        from PySide6.QtCore import QSettings as _QS
+        _tips = _QS("DogeAutoSub", "ui").value("doge/tips_enabled", True, type=bool)
+        try:
+            self.logPanel._narrator.enabled = _tips
+        except Exception:
+            pass
+
         # ── Check for updates + refresh model list (non-blocking) ─
         from PySide6.QtCore import QTimer
         QTimer.singleShot(2000, self._check_for_updates)
@@ -693,6 +702,49 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             idx = self.trans_engine.findText(current_trans)
             if idx >= 0:
                 self.trans_engine.setCurrentIndex(idx)
+
+    # ── View Menu ───────────────────────────────────────────────
+
+    def _setup_view_menu(self):
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtCore import QSettings
+        view_label = self.menuItems.get("View")
+        if not view_label:
+            return
+        view_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        settings = QSettings("DogeAutoSub", "ui")
+
+        def _show_menu(event):
+            menu = QMenu(self)
+            s = QSettings("DogeAutoSub", "ui")
+
+            act_motion = menu.addAction("Reduce Motion")
+            act_motion.setCheckable(True)
+            act_motion.setChecked(s.value("motion/reduce", False, type=bool))
+
+            act_sounds = menu.addAction("Sounds Enabled")
+            act_sounds.setCheckable(True)
+            act_sounds.setChecked(s.value("sounds/enabled", False, type=bool))
+
+            act_tips = menu.addAction("Show Doge Tips")
+            act_tips.setCheckable(True)
+            act_tips.setChecked(s.value("doge/tips_enabled", True, type=bool))
+
+            def _apply(action):
+                s2 = QSettings("DogeAutoSub", "ui")
+                s2.setValue("motion/reduce", act_motion.isChecked())
+                s2.setValue("sounds/enabled", act_sounds.isChecked())
+                tips = act_tips.isChecked()
+                s2.setValue("doge/tips_enabled", tips)
+                try:
+                    self.logPanel._narrator.enabled = tips
+                except Exception:
+                    pass
+
+            menu.triggered.connect(_apply)
+            menu.exec(view_label.mapToGlobal(view_label.rect().bottomLeft()))
+
+        view_label.mousePressEvent = _show_menu
 
     # ── Auto-Update ─────────────────────────────────────────────
 
