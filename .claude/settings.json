@@ -19,7 +19,8 @@
       "Bash(touch icons/mascot/.gitkeep)",
       "Bash(echo \"\")",
       "Bash(python -m pytest tests/ -q --tb=short)",
-      "Bash(python -m pytest tests/ -v --tb=short)"
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Read(//c/Users/vu.pham/.claude/skills/brainstorming/**)"
     ]
   }
 }

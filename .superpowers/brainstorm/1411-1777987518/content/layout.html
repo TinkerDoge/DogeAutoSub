@@ -1,0 +1,138 @@
+<h2>Layout — keep tabs, or rethink?</h2>
+<p class="subtitle">Currently: top tabs (Subtitles / Notes / Translate), 650×900 window. Three structural options below — same content, different shape. Click one.</p>
+
+<style>
+  body { background:#0e0e10; }
+  .frame { background:#1c1c1f; border:1px solid #2a2a2e; border-radius:10px; overflow:hidden; color:#e6e6e8; font-family:-apple-system, system-ui, sans-serif; }
+  .tb { display:flex; align-items:center; gap:8px; padding:7px 10px; background:#232327; border-bottom:1px solid #000;}
+  .traffic { display:flex; gap:5px;} .traffic span { width:10px; height:10px; border-radius:50%;}
+  .t-r{background:#5a3a3a}.t-y{background:#5a533a}.t-g{background:#3a5a3f}
+  .title { font-size:11px; font-weight:600; color:#cfcfd2; margin-left:auto; margin-right:auto;}
+  .stripe { display:flex; height:3px;}
+  .stripe div { flex:1;}
+  .stripe div:nth-child(1){background:#7a3b2e}.stripe div:nth-child(2){background:#9a5a36}.stripe div:nth-child(3){background:#b8823a}.stripe div:nth-child(4){background:#c9a558}
+
+  .seg { display:inline-flex; background:#2a2a2e; padding:3px; border-radius:7px; gap:2px;}
+  .seg span { padding:4px 10px; font-size:10px; color:#9a9a9f; border-radius:5px;}
+  .seg span.active { background:#3a3a3f; color:#fff;}
+
+  .input { background:#0f0f11; border:1px solid #2a2a2e; border-radius:5px; padding:5px 8px; font-size:10px; color:#8a8a90; flex:1;}
+  .btn { background:#b8823a; color:#1a1207; border:none; border-radius:5px; padding:5px 10px; font-size:10px; font-weight:600; cursor:pointer;}
+  .row { display:flex; gap:6px; margin: 4px 0;}
+  .label-sm { font-size:9px; color:#6a6a70; text-transform:uppercase; letter-spacing:1.2px; margin: 6px 0 3px; }
+  .progress { margin-top:8px; height:5px; border-radius:2px; background:#2a2a2e; overflow:hidden;}
+  .progress > div { height:100%; width:62%; background: linear-gradient(90deg,#7a3b2e,#9a5a36,#b8823a,#c9a558);}
+
+  /* sidebar layout */
+  .side-wrap { display:flex; min-height:280px;}
+  .side { width:130px; background:#161618; border-right:1px solid #2a2a2e; padding:10px 6px;}
+  .side-item { padding:7px 9px; font-size:11px; color:#9a9a9f; border-radius:6px; margin-bottom:2px; display:flex; align-items:center; gap:8px;}
+  .side-item.active { background:#2a2a2e; color:#fff;}
+  .side-item .dot { width:5px; height:5px; border-radius:50%; background:#b8823a; opacity:0;}
+  .side-item.active .dot { opacity:1;}
+  .side-section { font-size:9px; color:#5a5a60; text-transform:uppercase; letter-spacing:1px; padding:6px 9px 4px;}
+  .main-pane { flex:1; padding:14px;}
+
+  /* tabs layout */
+  .body { padding:14px;}
+
+  /* single-scroll layout */
+  .scroll-body { padding:14px; max-height:280px; overflow-y:auto;}
+  .scroll-section { background:#161618; border:1px solid #2a2a2e; border-radius:8px; padding:10px; margin-bottom:8px;}
+  .scroll-section h4 { margin:0 0 6px; font-size:11px; color:#cfcfd2;}
+
+  .cards .card { padding:0 !important; background:#161618; border-color:#2a2a2e; }
+  .card-image { padding:14px; background:#0a0a0c; border-bottom:1px solid #2a2a2e;}
+  .card-body { padding:14px; color:#cfcfd2;}
+  .card-body p { color:#9a9a9f;}
+  .card-body h3 { color:#fff;}
+</style>
+
+<div class="cards">
+
+  <!-- 1. TABS (current) -->
+  <div class="card" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="frame">
+        <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+        <div class="stripe"><div></div><div></div><div></div><div></div></div>
+        <div class="body">
+          <div class="seg" style="margin-bottom:10px"><span class="active">Subtitles</span><span>Notes</span><span>Translate</span></div>
+          <div class="label-sm">Source</div>
+          <div class="row"><div class="input">interview_q3.mp4</div><button class="btn">Choose</button></div>
+          <div class="label-sm">Languages</div>
+          <div class="row"><div class="input">English → Vietnamese · MLAAS</div></div>
+          <div class="progress"><div></div></div>
+          <div class="row" style="margin-top:8px"><span style="font-size:10px;color:#9a9a9f">00:42 / 01:08</span><button class="btn" style="margin-left:auto">Start</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>1 · Top tabs (current shape, redrawn)</h3>
+      <p>Keep the existing 3-tab structure but in the new dark-mac chrome. Smallest amount of restructuring. Familiar.</p>
+    </div>
+  </div>
+
+  <!-- 2. SIDEBAR -->
+  <div class="card" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="frame">
+        <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+        <div class="stripe"><div></div><div></div><div></div><div></div></div>
+        <div class="side-wrap">
+          <div class="side">
+            <div class="side-section">Workflows</div>
+            <div class="side-item active"><span class="dot"></span>Subtitles</div>
+            <div class="side-item"><span class="dot"></span>Meeting Notes</div>
+            <div class="side-item"><span class="dot"></span>Translate File</div>
+            <div class="side-section" style="margin-top:8px">Recent</div>
+            <div class="side-item" style="font-size:10px">interview_q3.mp4</div>
+            <div class="side-item" style="font-size:10px">demo_call.mp4</div>
+          </div>
+          <div class="main-pane">
+            <div class="label-sm">Source</div>
+            <div class="row"><div class="input">interview_q3.mp4</div><button class="btn">Choose</button></div>
+            <div class="label-sm">Languages</div>
+            <div class="row"><div class="input">English → Vietnamese · MLAAS</div></div>
+            <div class="progress"><div></div></div>
+            <div class="row" style="margin-top:8px"><span style="font-size:10px;color:#9a9a9f">00:42 / 01:08</span><button class="btn" style="margin-left:auto">Start</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>2 · Sidebar (Finder / Mail style) <span style="opacity:.6">recommended</span></h3>
+      <p>Workflows in the sidebar; main pane has the active one. Adds room for a "Recent files" list and future workflows. Most macOS-native shape. Wider window (~900×600).</p>
+    </div>
+  </div>
+
+  <!-- 3. SINGLE SCROLL -->
+  <div class="card" data-choice="scroll" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="frame">
+        <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+        <div class="stripe"><div></div><div></div><div></div><div></div></div>
+        <div class="scroll-body">
+          <div class="scroll-section">
+            <h4>Subtitles</h4>
+            <div class="row"><div class="input">interview_q3.mp4</div><button class="btn">Choose</button></div>
+            <div class="row"><div class="input">English → Vietnamese</div><button class="btn">Start</button></div>
+          </div>
+          <div class="scroll-section">
+            <h4>Meeting Notes</h4>
+            <div class="row"><div class="input">No transcript loaded</div><button class="btn">Upload</button></div>
+          </div>
+          <div class="scroll-section">
+            <h4>Translate File</h4>
+            <div class="row"><div class="input">No file selected</div><button class="btn">Choose</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>3 · Single-scroll (one page)</h3>
+      <p>All three workflows stacked, scrollable. No tabs. Good if you commonly use multiple in a session, but the window has to be tall and progress isn't always in view.</p>
+    </div>
+  </div>
+
+</div>

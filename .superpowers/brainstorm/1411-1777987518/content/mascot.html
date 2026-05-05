@@ -1,0 +1,168 @@
+<h2>Where does the doge mascot live?</h2>
+<p class="subtitle">You mentioned custom GIFs for the doge theme. Pick where they appear — pick more than one if you want. Click to toggle.</p>
+
+<style>
+  body { background:#0e0e10; }
+  .frame { background:#1c1c1f; border:1px solid #2a2a2e; border-radius:10px; overflow:hidden; color:#e6e6e8; font-family:-apple-system, system-ui, sans-serif; position: relative; }
+  .tb { display:flex; align-items:center; gap:8px; padding:7px 10px; background:#232327; border-bottom:1px solid #000;}
+  .traffic { display:flex; gap:5px;} .traffic span { width:10px; height:10px; border-radius:50%;}
+  .t-r{background:#5a3a3a}.t-y{background:#5a533a}.t-g{background:#3a5a3f}
+  .title { font-size:11px; font-weight:600; color:#cfcfd2; margin-left:auto; margin-right:auto;}
+  .stripe { display:flex; height:3px;}
+  .stripe div { flex:1;}
+  .stripe div:nth-child(1){background:#7a3b2e}.stripe div:nth-child(2){background:#9a5a36}.stripe div:nth-child(3){background:#b8823a}.stripe div:nth-child(4){background:#c9a558}
+  .side-wrap { display:flex; min-height:240px;}
+  .side { width:120px; background:#161618; border-right:1px solid #2a2a2e; padding:10px 6px; display:flex; flex-direction:column;}
+  .side-item { padding:6px 8px; font-size:11px; color:#9a9a9f; border-radius:6px; margin-bottom:2px;}
+  .side-item.active { background:#2a2a2e; color:#fff;}
+  .main-pane { flex:1; padding:14px; position:relative;}
+  .input { background:#0f0f11; border:1px solid #2a2a2e; border-radius:5px; padding:5px 8px; font-size:10px; color:#8a8a90; flex:1;}
+  .btn { background:#b8823a; color:#1a1207; border:none; border-radius:5px; padding:5px 10px; font-size:10px; font-weight:600;}
+  .row { display:flex; gap:6px; margin: 4px 0;}
+  .label-sm { font-size:9px; color:#6a6a70; text-transform:uppercase; letter-spacing:1.2px; margin: 6px 0 3px;}
+  .progress { margin-top:8px; height:5px; border-radius:2px; background:#2a2a2e; overflow:hidden;}
+  .progress > div { height:100%; width:62%; background: linear-gradient(90deg,#7a3b2e,#9a5a36,#b8823a,#c9a558);}
+
+  /* Pixel doge — drawn with box-shadow */
+  .doge { width:32px; height:32px; image-rendering:pixelated; background:
+    radial-gradient(circle at 35% 38%, #1a1207 2px, transparent 3px),
+    radial-gradient(circle at 65% 38%, #1a1207 2px, transparent 3px),
+    radial-gradient(circle at 50% 60%, #1a1207 1.5px, transparent 2px),
+    linear-gradient(180deg, #c9a558, #b8823a);
+    border-radius: 12px 12px 8px 8px;
+    border: 1.5px solid #1a1207;
+    position: relative;
+  }
+  .doge::before, .doge::after {
+    content:""; position:absolute; top:-4px; width:0; height:0;
+    border-left:5px solid transparent; border-right:5px solid transparent;
+    border-bottom:8px solid #b8823a; filter: drop-shadow(0 -1px 0 #1a1207);
+  }
+  .doge::before { left: 2px; transform: rotate(-15deg);}
+  .doge::after { right: 2px; transform: rotate(15deg);}
+  .doge.lg { width:64px; height:64px; border-radius:24px 24px 16px 16px; border-width: 2px;}
+  .doge.lg::before, .doge.lg::after { top:-8px; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid #b8823a;}
+  .doge.lg::before { left:5px;} .doge.lg::after { right:5px;}
+
+  .doge-corner { position:absolute; right:8px; bottom:8px;}
+  .doge-tb { margin-right: 8px;}
+  .empty-doge { display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 24px; color:#6a6a70; font-size:10px;}
+  .empty-doge .speech { background:#2a2a2e; border:1px solid #3a3a3e; border-radius:8px; padding:5px 9px; font-size:10px; color:#cfcfd2; margin-top:8px; position:relative;}
+  .empty-doge .speech::after { content:""; position:absolute; top:-5px; left:20px; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:5px solid #2a2a2e;}
+
+  .toast { position:absolute; right:12px; bottom:12px; background:#232327; border:1px solid #b8823a; border-radius:8px; padding:8px 10px; display:flex; align-items:center; gap:8px; font-size:10px; color:#cfcfd2;}
+
+  .options .option { background:#161618; border-color:#2a2a2e;}
+  .options .option .content h3 { color:#fff;}
+  .options .option .content p { color:#9a9a9f;}
+  .options .option .letter { background:#b8823a; color:#1a1207;}
+  .preview-box { background:#0a0a0c; padding:12px; border-radius:6px; margin-top:10px;}
+
+  .opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;}
+  .opt-card { background:#161618; border:1px solid #2a2a2e; border-radius:8px; padding:0; cursor:pointer; transition: border-color .15s, transform .15s;}
+  .opt-card:hover { border-color:#b8823a; transform: translateY(-1px);}
+  .opt-card.selected { border-color:#b8823a; box-shadow: 0 0 0 1px #b8823a;}
+  .opt-card .preview { padding: 12px; background:#0a0a0c; border-bottom:1px solid #2a2a2e; min-height:160px; display:flex; align-items:center; justify-content:center;}
+  .opt-card .meta { padding:10px 12px;}
+  .opt-card .meta h3 { margin:0 0 4px; font-size:13px; color:#fff;}
+  .opt-card .meta p { margin:0; font-size:11px; color:#9a9a9f; line-height:1.4;}
+  .check-pill { display:inline-block; font-size:9px; padding:2px 6px; border-radius:99px; background:#b8823a; color:#1a1207; font-weight:700; margin-left:6px;}
+</style>
+
+<p class="subtitle" style="font-size:11px; opacity:.7;">Multi-select — pick all that apply.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="empty-state" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Empty / idle states</h3>
+      <p>When no file is loaded, a centered doge sits with a tip ("Drop a video here, much subtitle"). Different idle GIF per workflow tab.</p>
+      <div class="preview-box">
+        <div class="frame" style="max-width:380px; margin:0 auto;">
+          <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+          <div class="stripe"><div></div><div></div><div></div><div></div></div>
+          <div class="side-wrap" style="min-height:140px;">
+            <div class="side"><div class="side-item active">Subtitles</div><div class="side-item">Notes</div><div class="side-item">Translate</div></div>
+            <div class="main-pane">
+              <div class="empty-doge"><div class="doge lg"></div><div class="speech">drop video here</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="progress" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Progress companion</h3>
+      <p>While transcribing/translating, doge animates next to the progress bar — different GIF per phase (extracting audio / transcribing / translating). Active only when working.</p>
+      <div class="preview-box">
+        <div class="frame" style="max-width:380px; margin:0 auto;">
+          <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+          <div class="stripe"><div></div><div></div><div></div><div></div></div>
+          <div class="side-wrap" style="min-height:140px;">
+            <div class="side"><div class="side-item active">Subtitles</div><div class="side-item">Notes</div></div>
+            <div class="main-pane">
+              <div class="label-sm">Transcribing</div>
+              <div class="row" style="align-items:center"><div class="doge"></div><div style="flex:1"><div class="progress"><div></div></div><div style="font-size:9px;color:#9a9a9f;margin-top:3px">00:42 / 01:08 — wow such fast</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="corner" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Persistent corner pet</h3>
+      <p>Always-visible small doge in bottom-right of the window. Reacts to events (idle blinks, work bobs, completion celebrates). Click it for a tip.</p>
+      <div class="preview-box">
+        <div class="frame" style="max-width:380px; margin:0 auto;">
+          <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+          <div class="stripe"><div></div><div></div><div></div><div></div></div>
+          <div class="side-wrap" style="min-height:140px;">
+            <div class="side"><div class="side-item active">Subtitles</div></div>
+            <div class="main-pane">
+              <div class="row"><div class="input">interview_q3.mp4</div><button class="btn">Choose</button></div>
+              <div class="row"><div class="input">English → Vietnamese</div></div>
+              <div class="doge-corner"><div class="doge"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="splash" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Splash screen only</h3>
+      <p>Full-window doge animation on app launch (you already have a splash). After that, the UI is doge-free chrome — keeps the work area focused.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="completion" onclick="toggleSelect(this)">
+    <div class="letter">E</div>
+    <div class="content">
+      <h3>Completion toast</h3>
+      <p>When a job finishes, a small toast slides up with a celebrating doge GIF and "such done. very subtitle." Auto-dismisses. Subtle, only on success.</p>
+      <div class="preview-box">
+        <div class="frame" style="max-width:380px; margin:0 auto;">
+          <div class="tb"><div class="traffic"><span class="t-r"></span><span class="t-y"></span><span class="t-g"></span></div><div class="title">DogeAutoSub</div></div>
+          <div class="stripe"><div></div><div></div><div></div><div></div></div>
+          <div class="side-wrap" style="min-height:140px;">
+            <div class="side"><div class="side-item active">Subtitles</div></div>
+            <div class="main-pane">
+              <div class="row"><div class="input">interview_q3.mp4</div></div>
+              <div class="toast"><div class="doge" style="width:24px;height:24px"></div><div><div style="color:#fff">Done · 01:08 transcribed</div><div style="color:#9a9a9f;font-size:9px">subtitle.srt saved</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

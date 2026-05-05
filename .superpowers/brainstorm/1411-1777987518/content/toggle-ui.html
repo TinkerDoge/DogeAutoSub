@@ -1,0 +1,97 @@
+<h2>How should the palette toggle look?</h2>
+<p class="subtitle">Atari Sunset is default. Three ways to switch between the four palettes. Click one.</p>
+
+<style>
+  body { background:#0e0e10; }
+  .demo { background:#1c1c1f; border:1px solid #2a2a2e; border-radius:10px; padding: 14px; color:#cfcfd2; font-family:-apple-system, system-ui, sans-serif; }
+  .tb { display:flex; align-items:center; gap:8px; padding:6px 10px; background:#232327; border-radius:8px; margin-bottom:8px;}
+  .traffic { display:flex; gap:5px; } .traffic span { width:10px; height:10px; border-radius:50%; }
+  .t-r{background:#5a3a3a}.t-y{background:#5a533a}.t-g{background:#3a5a3f}
+  .title { font-size:11px; font-weight:600; color:#cfcfd2; margin-left:auto; margin-right:auto;}
+  .stripe { display:flex; height:3px; border-radius:2px; overflow:hidden; margin-bottom:8px;}
+  .stripe div{flex:1;}
+  .atari div:nth-child(1){background:#7a3b2e}.atari div:nth-child(2){background:#9a5a36}.atari div:nth-child(3){background:#b8823a}.atari div:nth-child(4){background:#c9a558}
+
+  /* OPTION 1: cycle pill button */
+  .cycle-btn { display:inline-flex; align-items:center; gap:8px; background:#2a2a2e; border:1px solid #3a3a3e; border-radius:8px; padding:5px 10px; font-size:11px; color:#cfcfd2; cursor:pointer;}
+  .swatch-row { display:inline-flex; gap:2px; }
+  .swatch-row span { width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  /* OPTION 2: dropdown menu */
+  .menu { background:#232327; border:1px solid #3a3a3e; border-radius:8px; padding:6px; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+  .menu-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:6px; font-size:11px; cursor:pointer; }
+  .menu-item:hover, .menu-item.active { background:#2e2e33;}
+  .menu-item .check { margin-left:auto; opacity:0; font-size:10px; color:#b8823a;}
+  .menu-item.active .check { opacity:1; }
+  .mini-stripe { display:flex; height:8px; width:32px; border-radius:2px; overflow:hidden;}
+  .mini-stripe div { flex:1;}
+  .a-rainbow div:nth-child(1){background:#6f8c52}.a-rainbow div:nth-child(2){background:#c2a85a}.a-rainbow div:nth-child(3){background:#c4884a}.a-rainbow div:nth-child(4){background:#a85049}.a-rainbow div:nth-child(5){background:#7a4a8a}.a-rainbow div:nth-child(6){background:#4f7a9a}
+  .a-atari div:nth-child(1){background:#7a3b2e}.a-atari div:nth-child(2){background:#9a5a36}.a-atari div:nth-child(3){background:#b8823a}.a-atari div:nth-child(4){background:#c9a558}
+  .a-crt div:nth-child(1){background:#3a6a8a}.a-crt div:nth-child(2){background:#5a7a9a}.a-crt div:nth-child(3){background:#8a5a8a}.a-crt div:nth-child(4){background:#a85a6a}
+  .a-fami div:nth-child(1){background:#8a2a2a}.a-fami div:nth-child(2){background:#b84a3a}.a-fami div:nth-child(3){background:#d6c7b5}.a-fami div:nth-child(4){background:#3a3a3a}
+
+  /* OPTION 3: segmented swatch picker */
+  .seg-pick { display:inline-flex; gap:2px; background:#2a2a2e; padding:3px; border-radius:8px;}
+  .seg-pick .opt { padding:4px; border-radius:5px; cursor:pointer;}
+  .seg-pick .opt.active { background:#3a3a3e; box-shadow: inset 0 0 0 1px #555;}
+
+  .cards .card { padding:0 !important; background:#161618; border-color:#2a2a2e; }
+  .card-image { padding: 16px; background: #0a0a0c; border-bottom: 1px solid #2a2a2e; min-height: 130px; display:flex; align-items:center; justify-content:center;}
+  .card-body { padding: 14px; color:#cfcfd2; }
+  .card-body p { color:#9a9a9f; }
+  .card-body h3 { color:#fff; }
+  .label-sm { font-size:9px; color:#6a6a70; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:5px;}
+</style>
+
+<div class="cards">
+
+  <!-- 1. CYCLE -->
+  <div class="card" data-choice="cycle" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div>
+        <div class="label-sm" style="text-align:center">Click cycles A → B → C → D → A</div>
+        <button class="cycle-btn">
+          <span class="swatch-row"><span style="background:#7a3b2e"></span><span style="background:#9a5a36"></span><span style="background:#b8823a"></span><span style="background:#c9a558"></span></span>
+          Atari Sunset
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>1 · Cycle button</h3>
+      <p>One click swaps to the next palette. Lives in the title bar where the current theme toggle is. Smallest footprint — but you have to click through to find one you like.</p>
+    </div>
+  </div>
+
+  <!-- 2. DROPDOWN -->
+  <div class="card" data-choice="menu" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="menu">
+        <div class="menu-item"><div class="mini-stripe a-rainbow"><div></div><div></div><div></div><div></div><div></div><div></div></div><span>Apple Six-Stripe</span><span class="check">✓</span></div>
+        <div class="menu-item active"><div class="mini-stripe a-atari"><div></div><div></div><div></div><div></div></div><span>Atari Sunset</span><span class="check">✓</span></div>
+        <div class="menu-item"><div class="mini-stripe a-crt"><div></div><div></div><div></div><div></div></div><span>CRT Dusk</span><span class="check">✓</span></div>
+        <div class="menu-item"><div class="mini-stripe a-fami"><div></div><div></div><div></div><div></div></div><span>Famicom</span><span class="check">✓</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>2 · Dropdown menu <span style="opacity:.6">recommended</span></h3>
+      <p>Title-bar button opens this menu. See all four at once with names and previews, pick directly. Native macOS feel. Slightly more code but much better UX once there are 4+ themes.</p>
+    </div>
+  </div>
+
+  <!-- 3. SEGMENTED -->
+  <div class="card" data-choice="segmented" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="seg-pick">
+        <div class="opt"><div class="mini-stripe a-rainbow" style="width:24px;height:14px"><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+        <div class="opt active"><div class="mini-stripe a-atari" style="width:24px;height:14px"><div></div><div></div><div></div><div></div></div></div>
+        <div class="opt"><div class="mini-stripe a-crt" style="width:24px;height:14px"><div></div><div></div><div></div><div></div></div></div>
+        <div class="opt"><div class="mini-stripe a-fami" style="width:24px;height:14px"><div></div><div></div><div></div><div></div></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>3 · Always-visible swatch row</h3>
+      <p>All four stripes are visible in the title bar at all times. One click = switch. Most discoverable, takes the most title-bar space, can feel busy.</p>
+    </div>
+  </div>
+
+</div>
