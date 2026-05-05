@@ -1,41 +1,54 @@
-from modules.theme_tokens import TOKENS, build_stylesheet
+import pytest
+
+from modules.theme_tokens import PALETTES, build_stylesheet, SHARED_TOKENS
 
 
-def test_tokens_has_both_themes():
-    assert "light" in TOKENS
-    assert "dark" in TOKENS
+PALETTE_IDS = {"atari", "rainbow", "crt", "famicom"}
 
 
-def test_token_keys_match_across_themes():
-    assert set(TOKENS["light"].keys()) == set(TOKENS["dark"].keys())
+def test_palettes_has_all_four():
+    assert set(PALETTES.keys()) == PALETTE_IDS
 
 
-def test_required_tokens_present():
+def test_each_palette_has_required_keys():
+    required = {"name", "stripe", "accent", "accent_text"}
+    for pid in PALETTE_IDS:
+        missing = required - set(PALETTES[pid].keys())
+        assert not missing, f"{pid} missing: {missing}"
+
+
+def test_stripe_has_at_least_three_bands():
+    for pid in PALETTE_IDS:
+        assert len(PALETTES[pid]["stripe"]) >= 3, pid
+
+
+def test_atari_is_default_first_in_dict():
+    assert next(iter(PALETTES.keys())) == "atari"
+
+
+def test_shared_tokens_present():
     required = {
-        "chrome_bg", "interior_bg", "card_bg", "card_border",
-        "title_bar_start", "title_bar_end", "desktop_bg",
-        "text_primary", "text_secondary", "text_muted",
-        "accent_primary", "accent_success", "accent_warn", "accent_error",
+        "desktop_bg", "window_bg", "sidebar_bg", "titlebar_bg", "input_bg",
+        "border", "text_primary", "text_secondary", "text_tertiary",
+        "error",
     }
-    for theme in ("light", "dark"):
-        missing = required - set(TOKENS[theme].keys())
-        assert not missing, f"{theme} missing: {missing}"
+    missing = required - set(SHARED_TOKENS.keys())
+    assert not missing
 
 
-def test_build_stylesheet_returns_non_empty_string():
-    css = build_stylesheet("light")
-    assert isinstance(css, str)
-    assert len(css) > 500
-    assert "QMainWindow" in css
+def test_build_stylesheet_returns_long_string_per_palette():
+    for pid in PALETTE_IDS:
+        css = build_stylesheet(pid)
+        assert isinstance(css, str)
+        assert len(css) > 500
+        assert "QMainWindow" in css
 
 
-def test_build_stylesheet_substitutes_tokens():
-    css = build_stylesheet("light")
-    assert TOKENS["light"]["chrome_bg"] in css
-    assert TOKENS["light"]["title_bar_start"] in css
+def test_build_stylesheet_embeds_accent_color():
+    css = build_stylesheet("atari")
+    assert PALETTES["atari"]["accent"] in css
 
 
-def test_build_stylesheet_unknown_theme_raises():
-    import pytest
+def test_build_stylesheet_unknown_palette_raises():
     with pytest.raises(KeyError):
         build_stylesheet("solarized")

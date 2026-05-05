@@ -1,242 +1,209 @@
-"""Single source of truth for DogeAutoSub theme colors.
+"""Single source of truth for DogeAutoSub palette colors.
 
-Stylesheets for both Light and Dark themes are generated from these tokens.
-Editing colors here updates both themes consistently.
+The dark macOS-inspired chrome is fixed; only the accent color and the
+title-bar stripe bands change between palettes. Surface tones, borders,
+and text grays are shared so contrast can never break when a user
+switches palettes.
 """
 
-TOKENS = {
-    "light": {
-        "chrome_bg":         "#d4d0c8",
-        "interior_bg":       "#ece9d8",
-        "card_bg":           "#ffffff",
-        "card_border":       "#a0a0a0",
-        "title_bar_start":   "#0a246a",
-        "title_bar_end":     "#3a6ea5",
-        "desktop_bg":        "#2a8e8e",
-        "text_primary":      "#202020",
-        "text_secondary":    "#505050",
-        "text_muted":        "#808080",
-        "accent_primary":    "#1854b0",
-        "accent_primary_hi": "#4a8eea",
-        "accent_success":    "#7ed957",
-        "accent_warn":       "#ffd166",
-        "accent_error":      "#e63946",
-        "bevel_light":       "#ffffff",
-        "bevel_dark":        "#707070",
-        "input_bg":          "#ffffff",
-        "console_bg":        "#0c0c0c",
-        "console_text":      "#cccccc",
+SHARED_TOKENS = {
+    "desktop_bg":     "#0e0e10",
+    "window_bg":      "#1c1c1f",
+    "sidebar_bg":     "#161618",
+    "titlebar_bg":    "#232327",
+    "card_bg":        "#1c1c1f",
+    "input_bg":       "#0f0f11",
+    "border":         "#2a2a2e",
+    "border_strong":  "#3a3a3e",
+    "text_primary":   "#cfcfd2",
+    "text_secondary": "#9a9a9f",
+    "text_tertiary":  "#6a6a70",
+    "text_pixel":     "#8a8a90",
+    "error":          "#ff6b6b",
+    "warn":           "#ffd166",
+    "success":        "#7ed957",
+}
+
+PALETTES = {
+    "atari": {
+        "name": "Atari Sunset",
+        "stripe": ["#7a3b2e", "#9a5a36", "#b8823a", "#c9a558"],
+        "accent": "#b8823a",
+        "accent_text": "#1a1207",
     },
-    "dark": {
-        "chrome_bg":         "#3a3a3a",
-        "interior_bg":       "#1e1e1e",
-        "card_bg":           "#2a2a2a",
-        "card_border":       "#505050",
-        "title_bar_start":   "#000040",
-        "title_bar_end":     "#1a3a6a",
-        "desktop_bg":        "#1a4040",
-        "text_primary":      "#e0e0e0",
-        "text_secondary":    "#a0a0a0",
-        "text_muted":        "#707070",
-        "accent_primary":    "#4a8eea",
-        "accent_primary_hi": "#79c0ff",
-        "accent_success":    "#7ed957",
-        "accent_warn":       "#ffd166",
-        "accent_error":      "#ff6b6b",
-        "bevel_light":       "#5a5a5a",
-        "bevel_dark":        "#1a1a1a",
-        "input_bg":          "#1a1a1a",
-        "console_bg":        "#0c0c0c",
-        "console_text":      "#cccccc",
+    "rainbow": {
+        "name": "Apple Six-Stripe",
+        "stripe": ["#6f8c52", "#c2a85a", "#c4884a", "#a85049", "#7a4a8a", "#4f7a9a"],
+        "accent": "#6f8c52",
+        "accent_text": "#0e0e10",
+    },
+    "crt": {
+        "name": "CRT Dusk",
+        "stripe": ["#3a6a8a", "#5a7a9a", "#8a5a8a", "#a85a6a"],
+        "accent": "#5a7a9a",
+        "accent_text": "#0e0e10",
+    },
+    "famicom": {
+        "name": "Famicom",
+        "stripe": ["#8a2a2a", "#b84a3a", "#d6c7b5", "#3a3a3a"],
+        "accent": "#b84a3a",
+        "accent_text": "#0e0e10",
     },
 }
 
+DEFAULT_PALETTE = "atari"
 
-def build_stylesheet(theme: str) -> str:
-    """Build a Qt stylesheet string from the named theme's tokens."""
-    if theme not in TOKENS:
-        raise KeyError(f"Unknown theme: {theme!r}. Choose from {list(TOKENS)}.")
-    t = TOKENS[theme]
-    return _TEMPLATE.format(**t)
+
+def build_stylesheet(palette_id: str) -> str:
+    if palette_id not in PALETTES:
+        raise KeyError(f"Unknown palette: {palette_id!r}. Choose from {list(PALETTES)}.")
+    p = PALETTES[palette_id]
+    tokens = {**SHARED_TOKENS, "accent": p["accent"], "accent_text": p["accent_text"]}
+    return _TEMPLATE.format(**tokens)
 
 
 _TEMPLATE = """
 * {{
-    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", Tahoma, "Segoe UI", system-ui, sans-serif;
+    font-family: -apple-system, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    color: {text_primary};
 }}
 
 QMainWindow {{
-    background-color: {desktop_bg};
-    color: {text_primary};
+    background: {desktop_bg};
 }}
 
 QWidget#centralWidget {{
-    background-color: {chrome_bg};
+    background: {window_bg};
+    border-radius: 12px;
 }}
 
 QFrame#fauxTitleBar {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 {title_bar_start}, stop:1 {title_bar_end});
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    min-height: 24px;
-    max-height: 24px;
+    background: {titlebar_bg};
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    min-height: 28px;
+    max-height: 28px;
+    border-bottom: 1px solid {border};
 }}
 
 QLabel#fauxTitleText {{
-    color: white;
-    font-weight: 700;
-    font-size: 12px;
-    padding-left: 8px;
-}}
-
-QFrame#menuBar {{
-    background-color: {chrome_bg};
-    border-bottom: 1px solid {bevel_dark};
-    min-height: 22px;
-    max-height: 22px;
-}}
-
-QLabel#menuItem {{
     color: {text_primary};
     font-size: 12px;
-    padding: 2px 10px;
-}}
-QLabel#menuItem:hover {{
-    background-color: {accent_primary};
-    color: white;
+    font-weight: 600;
+    background: transparent;
 }}
 
-QTabWidget::pane {{
-    border: 1px solid {bevel_dark};
-    border-top: 1px solid {bevel_dark};
-    background-color: {interior_bg};
-    top: -1px;
+QFrame#sidebar {{
+    background: {sidebar_bg};
+    border-right: 1px solid {border};
 }}
 
-QTabBar::tab {{
-    background-color: {chrome_bg};
+QLabel#sidebarSectionLabel {{
+    color: {text_tertiary};
+    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    padding: 8px 10px 4px 10px;
+    background: transparent;
+}}
+
+QPushButton#sidebarItem {{
+    background: transparent;
     color: {text_secondary};
-    border: 1px solid {bevel_dark};
-    border-top-color: {bevel_light};
-    border-left-color: {bevel_light};
-    border-bottom: none;
-    padding: 6px 18px;
-    margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 10px;
+    text-align: left;
     font-size: 12px;
+}}
+QPushButton#sidebarItem:hover {{
+    background: {border};
+    color: {text_primary};
+}}
+QPushButton#sidebarItem[active="true"] {{
+    background: {accent};
+    color: {accent_text};
     font-weight: 600;
 }}
 
-QTabBar::tab:selected {{
-    background-color: {interior_bg};
-    color: {text_primary};
-    margin-bottom: -1px;
-    padding-bottom: 7px;
-}}
-
 QFrame#card {{
-    background-color: {card_bg};
-    border: 1px solid {card_border};
-    border-radius: 4px;
+    background: {card_bg};
+    border: 1px solid {border};
+    border-radius: 8px;
 }}
 
 QLabel#sectionTitle {{
-    color: {text_secondary};
-    font-size: 11px;
-    font-weight: 700;
+    color: {text_tertiary};
+    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
+    font-size: 9px;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 0;
-}}
-
-QLabel#filePathLabel {{
-    color: {accent_primary};
-    font-size: 11px;
+    background: transparent;
 }}
 
 QLabel#statusLabel {{
     color: {text_primary};
     font-size: 12px;
-    font-weight: 500;
+    background: transparent;
+}}
+
+QLabel#etaLabel {{
+    color: {text_secondary};
+    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", monospace;
+    font-size: 10px;
+    background: transparent;
 }}
 
 QPushButton {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {bevel_light}, stop:1 {chrome_bg});
+    background: {border};
     color: {text_primary};
-    border: 1px solid {bevel_dark};
-    border-top-color: {bevel_light};
-    border-left-color: {bevel_light};
-    border-radius: 3px;
-    padding: 5px 14px;
+    border: 1px solid {border_strong};
+    border-radius: 6px;
+    padding: 6px 12px;
     font-size: 12px;
     min-height: 22px;
 }}
 QPushButton:hover {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {bevel_light}, stop:1 {accent_primary_hi});
-    color: white;
-}}
-QPushButton:pressed {{
-    background: {chrome_bg};
-    border-top-color: {bevel_dark};
-    border-left-color: {bevel_dark};
-    border-bottom-color: {bevel_light};
-    border-right-color: {bevel_light};
-    padding-top: 6px;
-    padding-left: 15px;
+    background: {border_strong};
 }}
 QPushButton:disabled {{
-    color: {text_muted};
-    background: {chrome_bg};
+    color: {text_tertiary};
 }}
 
 QPushButton#startButton, QPushButton#generateNotesBtn, QPushButton#translateFileBtn {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {accent_primary_hi}, stop:1 {accent_primary});
-    color: white;
-    font-size: 13px;
+    background: {accent};
+    color: {accent_text};
+    border: 1px solid {accent};
     font-weight: 700;
-    min-height: 32px;
-    padding: 8px 24px;
+    min-height: 30px;
+    padding: 7px 18px;
 }}
 QPushButton#startButton:hover, QPushButton#generateNotesBtn:hover, QPushButton#translateFileBtn:hover {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 white, stop:1 {accent_primary_hi});
-    color: {accent_primary};
+    background: {accent};
+    border-color: {text_primary};
 }}
 
-QComboBox, QLineEdit {{
-    background-color: {input_bg};
+QComboBox, QLineEdit, QTextEdit, QPlainTextEdit {{
+    background: {input_bg};
     color: {text_primary};
-    border: 1px solid {bevel_dark};
-    border-top-color: {bevel_dark};
-    border-left-color: {bevel_dark};
-    border-bottom-color: {bevel_light};
-    border-right-color: {bevel_light};
-    border-radius: 2px;
-    padding: 4px 8px;
+    border: 1px solid {border};
+    border-radius: 6px;
+    padding: 5px 8px;
     font-size: 12px;
     min-height: 20px;
+    selection-background-color: {accent};
+    selection-color: {accent_text};
 }}
-QComboBox:hover, QLineEdit:focus {{
-    border-color: {accent_primary};
-}}
-
-QComboBox::drop-down {{
-    width: 18px;
-    border-left: 1px solid {bevel_dark};
-    background-color: {chrome_bg};
+QComboBox:hover, QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
+    border-color: {accent};
 }}
 
 QComboBox QAbstractItemView {{
-    background-color: {card_bg};
+    background: {card_bg};
     color: {text_primary};
-    border: 1px solid {bevel_dark};
-    selection-background-color: {accent_primary};
-    selection-color: white;
+    border: 1px solid {border_strong};
+    selection-background-color: {accent};
+    selection-color: {accent_text};
 }}
 
 QLabel {{
@@ -246,71 +213,77 @@ QLabel {{
 }}
 
 QProgressBar {{
-    background-color: {chrome_bg};
-    border: 1px solid {bevel_dark};
-    border-radius: 6px;
+    background: {input_bg};
+    border: 1px solid {border};
+    border-radius: 4px;
     text-align: center;
-    font-size: 10px;
+    font-size: 9px;
     color: {text_primary};
-    min-height: 12px;
-    max-height: 12px;
+    min-height: 8px;
+    max-height: 8px;
 }}
-
 QProgressBar::chunk {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 {accent_primary}, stop:1 {accent_primary_hi});
-    border-radius: 6px;
+    background: {accent};
+    border-radius: 4px;
 }}
 
 QSlider::groove:horizontal {{
-    height: 6px;
-    background: {chrome_bg};
-    border: 1px solid {bevel_dark};
-    border-radius: 3px;
+    height: 4px;
+    background: {border};
+    border-radius: 2px;
 }}
 QSlider::handle:horizontal {{
-    background: {accent_primary_hi};
-    border: 1px solid {accent_primary};
+    background: {accent};
+    border: none;
     width: 14px;
     height: 14px;
     margin: -5px 0;
-    border-radius: 8px;
+    border-radius: 7px;
 }}
 QSlider::sub-page:horizontal {{
-    background: {accent_primary};
-    border-radius: 3px;
+    background: {accent};
+    border-radius: 2px;
 }}
 
-QTextEdit {{
-    background-color: {card_bg};
+QMenu {{
+    background: {card_bg};
+    border: 1px solid {border_strong};
+    border-radius: 8px;
+    padding: 6px;
     color: {text_primary};
-    border: 1px solid {bevel_dark};
-    border-top-color: {bevel_dark};
-    border-left-color: {bevel_dark};
-    border-bottom-color: {bevel_light};
-    border-right-color: {bevel_light};
-    border-radius: 3px;
-    padding: 8px;
-    font-size: 12px;
-    selection-background-color: {accent_primary};
 }}
-
-QToolTip {{
-    background-color: #ffffe1;
-    color: #000;
-    border: 1px solid {bevel_dark};
-    padding: 4px 8px;
-    font-size: 11px;
+QMenu::item {{
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}}
+QMenu::item:selected {{
+    background: {border};
 }}
 
 QScrollBar:vertical {{
-    background: {chrome_bg};
-    width: 14px;
+    background: transparent;
+    width: 10px;
+    margin: 4px 2px;
 }}
 QScrollBar::handle:vertical {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 {bevel_light}, stop:1 {chrome_bg});
-    border: 1px solid {bevel_dark};
-    min-height: 30px;
+    background: {border_strong};
+    min-height: 24px;
+    border-radius: 4px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: {text_tertiary};
+}}
+QScrollBar::add-line, QScrollBar::sub-line {{
+    height: 0;
+}}
+
+QToolTip {{
+    background: {card_bg};
+    color: {text_primary};
+    border: 1px solid {border_strong};
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
 }}
 """
