@@ -23,6 +23,28 @@ FALLBACKS = {
     "error":      "start.gif",
 }
 
+PHASE_TO_ASSET = {
+    "Preparing":     "preparing",
+    "Reading video": "extracting",
+    "Transcribing":  "transcribing",
+    "Translating":   "translating",
+    "Saving":        "saving",
+    # Notes
+    "Reading transcript": "transcribing",
+    "Summarizing":        "transcribing",
+    "Formatting":         "saving",
+    # Translate File
+    "Reading file":       "transcribing",
+    "Detecting language": "transcribing",
+    "Formatting output":  "saving",
+}
+
+IDLE_FOR_WORKFLOW = {
+    "subtitles": "idle_subtitles",
+    "notes":     "idle_notes",
+    "translate": "idle_translate",
+}
+
 
 class MascotWidget(QLabel):
     def __init__(self, parent: Optional[QWidget] = None,
@@ -64,6 +86,52 @@ class MascotWidget(QLabel):
         path = self._resolve_path(name)
         if not path:
             return
+        if path.lower().endswith(".gif"):
+            mv = QMovie(path)
+            mv.setScaledSize(QSize(130, 130))
+            self.setMovie(mv)
+            mv.start()
+            self._movie = mv
+        else:
+            pm = QPixmap(path).scaled(
+                130, 130,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.setPixmap(pm)
+        self._idle_timer.start(60_000)
+
+    def set_phase(self, phase: str) -> None:
+        asset = PHASE_TO_ASSET.get(phase)
+        if not asset:
+            return
+        path = self._resolve_asset(asset)
+        if path:
+            self._show_path(path, state_name="working")
+        else:
+            self.set_state("working")
+
+    def set_idle(self, workflow: str) -> None:
+        asset = IDLE_FOR_WORKFLOW.get(workflow)
+        if not asset:
+            self.set_state("idle")
+            return
+        path = self._resolve_asset(asset)
+        if path:
+            self._show_path(path, state_name="idle")
+        else:
+            self.set_state("idle")
+
+    def _resolve_asset(self, asset_key: str) -> Optional[str]:
+        """Look for <icons_root>/mascot/<asset_key>.gif then .png, else None."""
+        for ext in (".gif", ".png"):
+            p = os.path.join(self._icons_root, "mascot", f"{asset_key}{ext}")
+            if os.path.exists(p):
+                return p
+        return None
+
+    def _show_path(self, path: str, *, state_name: str) -> None:
+        self.state = state_name
         if path.lower().endswith(".gif"):
             mv = QMovie(path)
             mv.setScaledSize(QSize(130, 130))
