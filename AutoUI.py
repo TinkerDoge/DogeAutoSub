@@ -363,6 +363,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.filePathLabel.setText(os.path.dirname(path))
             if not self.output_folder_path:
                 self.output_folder_path = os.path.dirname(path)
+            self._push_recent("subtitles", path)
     
     def _select_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Output Folder")
@@ -579,8 +580,51 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.mascot.set_idle(name)
         self._render_recents(name)
 
+    _RECENTS_MAX = 5
+
+    def _push_recent(self, workflow: str, path: str):
+        from PySide6.QtCore import QSettings
+        if not path:
+            return
+        s = QSettings("DogeAutoSub", "ui")
+        key = f"recents/{workflow}"
+        existing = s.value(key, [], type=list) or []
+        items = [p for p in existing if p != path]
+        items.insert(0, path)
+        s.setValue(key, items[:self._RECENTS_MAX])
+        self._render_recents(workflow)
+
     def _render_recents(self, workflow: str):
-        pass  # implemented in Task 11
+        from PySide6.QtCore import QSettings
+        from PySide6.QtWidgets import QPushButton
+        s = QSettings("DogeAutoSub", "ui")
+        items = s.value(f"recents/{workflow}", [], type=list) or []
+        while self.recentListLayout.count():
+            item = self.recentListLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        for path in items:
+            btn = QPushButton(os.path.basename(path))
+            btn.setObjectName("sidebarItem")
+            btn.setToolTip(path)
+            btn.clicked.connect(
+                lambda _checked=False, p=path, w=workflow: self._reload_recent(w, p)
+            )
+            self.recentListLayout.addWidget(btn)
+
+    def _reload_recent(self, workflow: str, path: str):
+        if workflow == "subtitles":
+            self.input_file_path = path
+            self.filePathLabel.setText(path)
+        elif workflow == "notes":
+            self.docx_path = path
+            if hasattr(self, "docxPathLabel"):
+                self.docxPathLabel.setText(path)
+        elif workflow == "translate":
+            self.trans_file_path = path
+            if hasattr(self, "transFilePathLabel"):
+                self.transFilePathLabel.setText(path)
+        self._activate_workflow(workflow)
 
     # ── EtaTracker helpers ───────────────────────────────────────
 
@@ -639,6 +683,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.docx_path = path
             self.selectDocxBtn.setText(f"📎  {os.path.basename(path)}")
             self.docxPathLabel.setText(path)
+            self._push_recent("notes", path)
     
     def _generate_meeting_notes(self):
         if not self.docx_path:
@@ -709,6 +754,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.trans_file_path = path
             self.selectTransFileBtn.setText(f"📎  {os.path.basename(path)}")
             self.transFilePathLabel.setText(path)
+            self._push_recent("translate", path)
     
     def _get_lang_code(self, display_name: str) -> str:
         """Convert display name back to language code."""
