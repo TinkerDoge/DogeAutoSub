@@ -7,7 +7,7 @@ prefixed with '~' so the live status line never shows '--:--:--'.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -135,7 +135,7 @@ class EtaTracker:
             return "—"
         run = self._runs[active]
         cold_start = (
-            run.throughput_ema is None
+            not run.throughput_ema
             or run.total <= 0
             or (time.monotonic() - run.started_at) < 2.0
         )

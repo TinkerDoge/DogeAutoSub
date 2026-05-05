@@ -70,3 +70,17 @@ def test_format_seconds_short():
     assert format_remaining(70) == "1m 10s"
     assert format_remaining(3725) == "1h 2m"
     assert format_remaining(0) == "0s"
+
+
+def test_warm_path_returns_eta_without_tilde(monkeypatch):
+    times = iter([1000.0, 1001.0, 1010.0])
+    monkeypatch.setattr("modules.eta_tracker.time.monotonic", lambda: next(times))
+
+    t = EtaTracker(workflow="subtitles")
+    t.set_input_size(100.0)
+    t.start_phase("Transcribing")       # t=1000
+    t.update_position(20.0, 100.0)      # t=1001, throughput_ema = 20 u/s
+    # t=1010: 10s elapsed — past 2s threshold, throughput_ema is nonzero
+    result = t.current_eta_string()
+    assert not result.startswith("~"), f"Expected warm path, got: {result}"
+    assert "left" in result
