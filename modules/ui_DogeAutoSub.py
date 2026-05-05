@@ -77,10 +77,40 @@ class Ui_MainWindow(object):
         self.fauxTitleBar = QFrame()
         self.fauxTitleBar.setObjectName("fauxTitleBar")
         tb = QHBoxLayout(self.fauxTitleBar)
-        tb.setContentsMargins(10, 4, 8, 4)
-        tb.setSpacing(8)
+        tb.setContentsMargins(8, 4, 8, 4)
+        tb.setSpacing(6)
 
-        for name in ("closeBtn", "minBtn", "zoomBtn"):
+        # ── Left side: palette dropdown + open output folder ─────────────
+        self.paletteMenuButton = PaletteMenuButton(self.fauxTitleBar)
+        self.paletteMenuButton.setObjectName("paletteMenuButton")
+        self.paletteMenuButton.setFixedHeight(20)
+        self.paletteMenuButton.setMaximumHeight(20)
+        tb.addWidget(self.paletteMenuButton)
+
+        self.openFolderBtn = QPushButton("OUTPUT")
+        self.openFolderBtn.setObjectName("openFolderBtn")
+        self.openFolderBtn.setToolTip("Open output folder")
+        self.openFolderBtn.setFixedHeight(20)
+        self.openFolderBtn.setMaximumHeight(20)
+        self.openFolderBtn.setCursor(Qt.CursorShape.PointingHandCursor)
+        tb.addWidget(self.openFolderBtn)
+
+        tb.addSpacing(4)
+
+        # App icon
+        self.titleBarIcon = QLabel()
+        self.titleBarIcon.setObjectName("titleBarIcon")
+        self.titleBarIcon.setFixedSize(16, 16)
+        tb.addWidget(self.titleBarIcon)
+
+        # ── Centered title ────────────────────────────────────────────────
+        self.fauxTitleText = QLabel("DOGE · AUTO · SUB")
+        self.fauxTitleText.setObjectName("fauxTitleText")
+        self.fauxTitleText.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tb.addWidget(self.fauxTitleText, 1)
+
+        # ── Right side: min / zoom / close (Windows order) ───────────────
+        for name in ("minBtn", "zoomBtn", "closeBtn"):
             b = QPushButton()
             b.setObjectName(name)
             b.setFixedSize(12, 12)
@@ -88,36 +118,11 @@ class Ui_MainWindow(object):
             tb.addWidget(b)
             setattr(self, name, b)
 
-        tb.addSpacing(8)
-
-        # App icon (loaded by AutoUI.py if file exists; placeholder otherwise)
-        self.titleBarIcon = QLabel()
-        self.titleBarIcon.setObjectName("titleBarIcon")
-        self.titleBarIcon.setFixedSize(16, 16)
-        tb.addWidget(self.titleBarIcon)
-        tb.addSpacing(6)
-
-        self.fauxTitleText = QLabel("DOGE · AUTO · SUB")
-        self.fauxTitleText.setObjectName("fauxTitleText")
-        self.fauxTitleText.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        tb.addWidget(self.fauxTitleText, 1)
-
-        self.paletteMenuButton = PaletteMenuButton(self.fauxTitleBar)
-        self.paletteMenuButton.setObjectName("paletteMenuButton")
-        self.paletteMenuButton.setFixedHeight(20)
-        self.paletteMenuButton.setMaximumHeight(20)
-        tb.addWidget(self.paletteMenuButton)
-
-        # Legacy buttons kept hidden so AutoUI.py signal connections don't break
+        # Legacy themeBtn (kept hidden so AutoUI signal connections don't break)
         self.themeBtn = QPushButton()
         self.themeBtn.setObjectName("themeBtn")
         self.themeBtn.setVisible(False)
         tb.addWidget(self.themeBtn)
-
-        self.openFolderBtn = QPushButton()
-        self.openFolderBtn.setObjectName("openFolderBtn")
-        self.openFolderBtn.setVisible(False)
-        tb.addWidget(self.openFolderBtn)
 
         # Legacy menu bar items kept as hidden labels
         self.menuItems = {}

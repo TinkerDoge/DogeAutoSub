@@ -241,6 +241,25 @@ QPushButton#paletteMenuButton::menu-indicator {{
     width: 0;
 }}
 
+QPushButton#openFolderBtn {{
+    background: transparent;
+    color: {text_secondary};
+    border: 1px solid {border};
+    border-radius: 4px;
+    padding: 1px 8px;
+    min-height: 18px;
+    max-height: 20px;
+    font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+}}
+QPushButton#openFolderBtn:hover {{
+    background: {border};
+    color: {accent};
+    border-color: {accent};
+}}
+
 QPushButton#startButton, QPushButton#generateNotesBtn, QPushButton#translateFileBtn {{
     background: {accent};
     color: {accent_text};
