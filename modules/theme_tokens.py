@@ -86,6 +86,15 @@ QFrame#fauxTitleBar {{
     border-bottom: 1px solid {border};
 }}
 
+QLabel#funNoticeLabel {{
+    color: {text_tertiary};
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 10px;
+    font-style: italic;
+    letter-spacing: 0.3px;
+    background: transparent;
+}}
+
 QLabel#fauxTitleText {{
     color: {text_primary};
     font-family: "Bahnschrift Condensed", "Bahnschrift", "Arial Narrow", sans-serif;

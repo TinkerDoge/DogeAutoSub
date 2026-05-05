@@ -143,7 +143,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self._log_writer = LogWriter(log_dir, keep_days=7)
         self._log_writer.prune()
         self.logPanel = LogPanel(log_writer=self._log_writer)
-        # Swap the logPanelHost placeholder out for the real LogPanel
+        # Swap the logPanelHost placeholder out for the real LogPanel.
+        # The placeholder is hidden by default; the LogPanel only appears when
+        # _on_log_event_for_eta auto-opens it on error.
         host_parent = self.logPanelHost.parentWidget()
         host_layout = host_parent.layout() if host_parent else None
         if host_layout is not None:
@@ -151,6 +153,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             host_layout.removeWidget(self.logPanelHost)
             self.logPanelHost.deleteLater()
             host_layout.insertWidget(idx, self.logPanel)
+            self.logPanel.setVisible(False)  # hidden by default
         self.logPanel.set_pipeline(PIPELINE_SUBTITLES)
         self._PIPELINES = {
             "subtitles": PIPELINE_SUBTITLES,
@@ -524,6 +527,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             _toast.show_toast()
         except Exception:
             pass
+        if hasattr(self, "funNoticeLabel"):
+            self.funNoticeLabel.setText("such done. very subtitle.")
 
     def _on_log_event(self, evt: dict):
         kind = evt.get("kind")
@@ -627,6 +632,8 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if hasattr(self, "mascot") and self.mascot is not None:
             self.mascot.set_idle(name)
         self._render_recents(name)
+        if hasattr(self, "funNoticeLabel"):
+            self.funNoticeLabel.setText("")
 
     _RECENTS_MAX = 5
 
@@ -686,6 +693,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             if hasattr(self, "mascot") and self.mascot is not None:
                 self.mascot.set_phase(phase)
             self._refresh_status_line()
+            self._set_fun_notice_for_phase(phase)
         elif kind == "step_done" and phase:
             self._eta.complete_phase(phase)
             self.phaseStrip.mark_done(phase)
@@ -697,6 +705,7 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             try:
                 if hasattr(self, "logPanel"):
                     self.logPanel.set_filter("events")
+                    self.logPanel.setVisible(True)
                     if not self.logPanel._console_visible:
                         self.logPanel.toggle_console()
             except Exception:
@@ -719,6 +728,25 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.statusLabel.setText(active)
             self.statusLabel.setStyleSheet("")
         self.etaLabel.setText(self._eta.current_eta_string())
+
+    _FUN_NOTICES = {
+        "Preparing":     ("warming up the wires.", "loading wow.dll", "kernel: doge.sys ready."),
+        "Reading video": ("such audio. very wave.", "extracting frames.", "ffmpeg goes brrr."),
+        "Transcribing":  ("very listen. much words.", "such transcribe.", "doge ear: 100%"),
+        "Translating":   ("translatey doge.", "many language. wow.", "such polyglot."),
+        "Saving":        ("putting bits in jar.", "almost. so close.", "writing srt scrolls."),
+    }
+
+    def _set_fun_notice_for_phase(self, phase: str):
+        # NOTE: View menu writes "doge/tips_enabled" — match that key here
+        from PySide6.QtCore import QSettings
+        if not QSettings("DogeAutoSub", "ui").value("doge/tips_enabled", True, type=bool):
+            self.funNoticeLabel.setText("")
+            return
+        import random
+        choices = self._FUN_NOTICES.get(phase, ())
+        if choices:
+            self.funNoticeLabel.setText(random.choice(choices))
 
     # ── Meeting Notes ───────────────────────────────────────────
     

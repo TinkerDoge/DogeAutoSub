@@ -310,27 +310,53 @@ class Ui_MainWindow(object):
         lay.addWidget(settingsCard)
         self.settingsCard = settingsCard
 
-        # Action card
+        # Action card (cockpit panel) ────────────────────────────────────
         actionCard = self._card()
         alay = QVBoxLayout(actionCard)
-        alay.setContentsMargins(12, 8, 12, 8)
-        alay.setSpacing(6)
+        alay.setContentsMargins(12, 10, 12, 10)
+        alay.setSpacing(8)
 
         self.startButton = QPushButton("Start Processing")
         self.startButton.setObjectName("startButton")
         alay.addWidget(self.startButton)
 
+        # Thin divider line
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setStyleSheet("background:#2a2a2e; max-height:1px;")
+        alay.addWidget(divider)
+
+        # Cockpit row: mascot | (phase strip + progress + status + fun notice)
+        cockpit = QHBoxLayout()
+        cockpit.setSpacing(12)
+        cockpit.setContentsMargins(0, 0, 0, 0)
+
+        # Mascot host (left)
+        self.mascotHost = QFrame()
+        self.mascotHost.setObjectName("mascotHost")
+        self.mascotHost.setFixedSize(QSize(72, 72))
+        mhLay = QVBoxLayout(self.mascotHost)
+        mhLay.setContentsMargins(0, 0, 0, 0)
+        mhLay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cockpit.addWidget(self.mascotHost)
+
+        # Right column
+        rightCol = QVBoxLayout()
+        rightCol.setSpacing(4)
+        rightCol.setContentsMargins(0, 0, 0, 0)
+
         self.phaseStrip = PhaseStrip()
         self.phaseStrip.setObjectName("phaseStrip")
-        alay.addWidget(self.phaseStrip)
+        rightCol.addWidget(self.phaseStrip)
 
         self.progressBar = QProgressBar()
         self.progressBar.setObjectName("progressBar")
         self.progressBar.setValue(0)
         self.progressBar.setTextVisible(False)
-        alay.addWidget(self.progressBar)
+        rightCol.addWidget(self.progressBar)
 
         statusRow = QHBoxLayout()
+        statusRow.setSpacing(8)
         self.statusLabel = QLabel("Standby")
         self.statusLabel.setObjectName("statusLabel")
         statusRow.addWidget(self.statusLabel)
@@ -338,24 +364,24 @@ class Ui_MainWindow(object):
         self.etaLabel = QLabel("")
         self.etaLabel.setObjectName("etaLabel")
         statusRow.addWidget(self.etaLabel)
-        alay.addLayout(statusRow)
+        rightCol.addLayout(statusRow)
 
+        # Fun notice — playful per-phase doge line
+        self.funNoticeLabel = QLabel("")
+        self.funNoticeLabel.setObjectName("funNoticeLabel")
+        rightCol.addWidget(self.funNoticeLabel)
+
+        cockpit.addLayout(rightCol, 1)
+        alay.addLayout(cockpit)
+
+        # Log panel host (kept hidden — only auto-opens on error via AutoUI)
         self.logPanelHost = QFrame()
         self.logPanelHost.setObjectName("logPanelHost")
+        self.logPanelHost.setVisible(False)
         alay.addWidget(self.logPanelHost)
 
         lay.addWidget(actionCard)
         self.actionCard = actionCard
-
-        # Mascot host (MascotWidget inserted by AutoUI.py)
-        self.mascotHost = QFrame()
-        self.mascotHost.setObjectName("mascotHost")
-        self.mascotHost.setFixedHeight(80)
-        mhLay = QHBoxLayout(self.mascotHost)
-        mhLay.setContentsMargins(0, 0, 0, 0)
-        mhLay.addStretch(1)
-        mhLay.addStretch(1)
-        lay.addWidget(self.mascotHost)
 
         lay.addStretch(1)
         scroll = QScrollArea()
