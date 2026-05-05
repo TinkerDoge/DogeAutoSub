@@ -34,12 +34,21 @@ class Toast(QFrame):
         return self._text
 
     def show_toast(self) -> None:
+        from PySide6.QtCore import QSettings
+        reduce_motion = QSettings("DogeAutoSub", "ui").value(
+            "view/reduceMotion", False, type=bool
+        )
         parent = self.parentWidget()
         if not parent:
             self.show()
             return
         x = (parent.width() - self.width()) // 2
         end_y = 12
+        if reduce_motion:
+            self.move(QPoint(x, end_y))
+            self.show()
+            QTimer.singleShot(self._duration_ms, self.deleteLater)
+            return
         start = QPoint(x, -self.height())
         end = QPoint(x, end_y)
         self.move(start)
