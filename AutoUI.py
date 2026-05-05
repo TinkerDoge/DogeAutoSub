@@ -415,6 +415,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
             self.statusImage.set_state("celebrate")
         except Exception:
             pass
+        try:
+            from modules.animations import confetti_burst
+            confetti_burst(self.actionCard)
+            original = self.actionCard.styleSheet()
+            self.actionCard.setStyleSheet(
+                original + " QFrame { border: 2px solid #7ed957; background: #f4fff0; }"
+            )
+            from PySide6.QtCore import QTimer as _QT
+            _QT.singleShot(400, lambda: self.actionCard.setStyleSheet(original))
+        except Exception:
+            pass
 
     def _on_log_event(self, evt: dict):
         kind = evt.get("kind")
@@ -435,6 +446,17 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if kind == "log" and evt.get("level") == "doge":
             try:
                 self.statusImage.say(evt.get("text", ""))
+            except Exception:
+                pass
+        # Error feedback: shake window + toast
+        is_error = (kind == "step_error") or (kind == "log" and evt.get("level") == "error")
+        if is_error:
+            try:
+                from modules.animations import shake
+                from modules.toast import Toast
+                shake(self, amplitude=8, cycles=3, duration_ms=220)
+                msg = evt.get("text") or evt.get("detail") or "An error occurred"
+                Toast(self, msg, kind="error", duration_ms=4000).show_toast()
             except Exception:
                 pass
     
@@ -486,6 +508,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.notesStatusLabel.setText("Error generating notes")
         self.generateNotesBtn.setEnabled(True)
         self.generateNotesBtn.setText("✨  Generate Meeting Notes")
+        try:
+            from modules.animations import shake
+            from modules.toast import Toast
+            shake(self, amplitude=8, cycles=3, duration_ms=220)
+            Toast(self, error[:120], kind="error", duration_ms=4000).show_toast()
+        except Exception:
+            pass
     
     def _save_meeting_notes(self):
         text = self.notesOutput.toPlainText()
@@ -565,6 +594,13 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         self.transStatusLabel.setText("Translation failed")
         self.translateFileBtn.setEnabled(True)
         self.translateFileBtn.setText("🌐  Translate File")
+        try:
+            from modules.animations import shake
+            from modules.toast import Toast
+            shake(self, amplitude=8, cycles=3, duration_ms=220)
+            Toast(self, error[:120], kind="error", duration_ms=4000).show_toast()
+        except Exception:
+            pass
     
     def _save_translation(self):
         text = self.transOutput.toPlainText()
