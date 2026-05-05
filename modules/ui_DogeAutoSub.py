@@ -377,8 +377,13 @@ class Ui_MainWindow(object):
         self.saveNotesBtn = QPushButton("Save Notes")
         self.saveNotesBtn.setObjectName("saveNotesBtn")
         clay.addWidget(self.saveNotesBtn)
+        self.notesStatusLabel = QLabel("")
+        self.notesStatusLabel.setObjectName("notesStatusLabel")
+        clay.addWidget(self.notesStatusLabel)
         lay.addWidget(card)
         lay.addStretch(1)
+        # Alias for backward compat (AutoUI.py uses selectDocxBtn)
+        self.selectDocxBtn = self.uploadDocxBtn
         self.notesTab = pane
         self.workflowStack.addWidget(pane)
 
@@ -415,7 +420,33 @@ class Ui_MainWindow(object):
         self.translateFileBtn = QPushButton("Translate File")
         self.translateFileBtn.setObjectName("translateFileBtn")
         clay.addWidget(self.translateFileBtn)
+
+        # Translation engine dropdown (AutoUI.py: self.trans_engine)
+        clay.addWidget(self._section_title("ENGINE"))
+        self.trans_engine = QComboBox()
+        self.trans_engine.setObjectName("transEngineDropdown")
+        clay.addWidget(self.trans_engine)
+
+        # Output area (AutoUI.py: self.transOutput)
+        clay.addWidget(self._section_title("OUTPUT"))
+        self.transOutput = QTextEdit()
+        self.transOutput.setObjectName("transOutput")
+        self.transOutput.setMinimumHeight(120)
+        clay.addWidget(self.transOutput)
+
+        self.transStatusLabel = QLabel("")
+        self.transStatusLabel.setObjectName("transStatusLabel")
+        clay.addWidget(self.transStatusLabel)
+
+        self.saveTransBtn = QPushButton("Save Translation")
+        self.saveTransBtn.setObjectName("saveTransBtn")
+        clay.addWidget(self.saveTransBtn)
+
         lay.addWidget(card)
         lay.addStretch(1)
+        # Aliases for backward compat (AutoUI.py uses old names)
+        self.selectTransFileBtn = self.uploadTransBtn
+        self.trans_src_lang = self.transSrcDropdown
+        self.trans_tgt_lang = self.transTgtDropdown
         self.translateTab = pane
         self.workflowStack.addWidget(pane)

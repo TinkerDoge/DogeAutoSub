@@ -36,6 +36,12 @@ def test_required_widgets_present_after_setupUi(app):
         "sidebar", "sidebarSubtitlesItem", "sidebarNotesItem", "sidebarTranslateItem",
         "phaseStrip", "paletteMenuButton", "paletteStripe",
         "workflowStack", "statusBar", "logPanelHost", "mascotHost",
+        # Notes pane additions
+        "notesStatusLabel",
+        # Translate pane additions
+        "trans_engine", "transOutput", "transStatusLabel", "saveTransBtn",
+        # Aliases
+        "selectDocxBtn", "selectTransFileBtn", "trans_src_lang", "trans_tgt_lang",
     ]
     missing = [n for n in required if not hasattr(ui, n)]
     assert not missing, f"missing widgets: {missing}"
