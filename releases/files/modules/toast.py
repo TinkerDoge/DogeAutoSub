@@ -1,0 +1,85 @@
+"""Top-of-window slide-in toast notification."""
+from __future__ import annotations
+
+from PySide6.QtCore import QPoint, QPropertyAnimation, QTimer, Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QWidget
+
+
+_KIND_STYLES = {
+    "error":   ("#e63946", "#ffe0e3"),
+    "warn":    ("#cc8800", "#fff5d6"),
+    "success": ("#2d6a3a", "#dff5e3"),
+    "info":    ("#1854b0", "#dceaff"),
+}
+
+
+class Toast(QFrame):
+    def __init__(self, parent: QWidget, text: str, *,
+                 kind: str = "info", duration_ms: int = 4000):
+        super().__init__(parent)
+        self._text = text
+        self._duration_ms = duration_ms
+        fg, bg = _KIND_STYLES.get(kind, _KIND_STYLES["info"])
+        self.setStyleSheet(
+            f"QFrame {{ background:{bg}; border:1px solid {fg}; border-radius:4px; }}"
+            f"QLabel {{ color:{fg}; font-size:12px; padding:8px 14px; background:transparent; border:none; }}"
+        )
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._label = QLabel(text)
+        layout.addWidget(self._label)
+        self.adjustSize()
+
+    def text(self) -> str:
+        return self._text
+
+    def show_toast(self) -> None:
+        from PySide6.QtCore import QSettings
+        reduce_motion = QSettings("DogeAutoSub", "ui").value(
+            "motion/reduce", False, type=bool
+        )
+        parent = self.parentWidget()
+        if not parent:
+            self.show()
+            return
+        x = (parent.width() - self.width()) // 2
+        end_y = 12
+        if reduce_motion:
+            self.move(QPoint(x, end_y))
+            self.show()
+            QTimer.singleShot(self._duration_ms, self.deleteLater)
+            return
+        start = QPoint(x, -self.height())
+        end = QPoint(x, end_y)
+        self.move(start)
+        self.show()
+        a = QPropertyAnimation(self, b"pos", self)
+        a.setDuration(220)
+        a.setStartValue(start)
+        a.setEndValue(end)
+        a.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        QTimer.singleShot(self._duration_ms, self._slide_out)
+
+    def _slide_out(self) -> None:
+        parent = self.parentWidget()
+        if not parent:
+            self.deleteLater()
+            return
+        a = QPropertyAnimation(self, b"pos", self)
+        a.setDuration(220)
+        a.setStartValue(self.pos())
+        a.setEndValue(QPoint(self.x(), -self.height()))
+        a.finished.connect(self.deleteLater)
+        a.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
+
+def success_with_doge(parent: "QWidget", message: str, *, filename: str = "",
+                      duration_ms: int = 4000) -> Toast:
+    """Build a success toast mentioning the filename. Doge copy gated by QSettings."""
+    from PySide6.QtCore import QSettings
+    tips = QSettings("DogeAutoSub", "ui").value("view/dogeTips", True, type=bool)
+    if filename:
+        body = f"{message} · {filename}" if not tips else f"{message} · {filename} · such done"
+    else:
+        body = message if not tips else f"{message} · much wow"
+    return Toast(parent, body, kind="success", duration_ms=duration_ms)

@@ -212,6 +212,7 @@ class TranslateFileThread(QThread):
     error = Signal(str)
     status_update = Signal(str)
     progress_update = Signal(int)
+    log_event = Signal(dict)
 
     def __init__(self, filepath: str, src_lang: str, dst_lang: str,
                  engine: str):
@@ -221,8 +222,14 @@ class TranslateFileThread(QThread):
         self.dst_lang = dst_lang
         self.engine = engine
 
+    def _emit(self, kind: str, **fields):
+        evt = {"kind": kind}
+        evt.update(fields)
+        self.log_event.emit(evt)
+
     def run(self):
         try:
+            self._emit("step_start", step="Read file")
             self.status_update.emit("Reading file…")
             content = _read_file_content(self.filepath)
 
@@ -230,13 +237,18 @@ class TranslateFileThread(QThread):
                 self.error.emit("File is empty or could not be read.")
                 return
 
+            self._emit("step_done", step="Read file")
+            self._emit("step_start", step="Detect language")
             ext = os.path.splitext(self.filepath)[1].lower()
             line_count = content.count("\n") + 1
+            self._emit("step_done", step="Detect language")
+            self._emit("step_start", step="Translate")
             self.status_update.emit(f"Translating {line_count} lines via {self.engine}…")
 
             def on_progress(pct):
                 self.progress_update.emit(pct)
                 self.status_update.emit(f"Translating… {pct}%")
+                self._emit("log", level="info", text=f"Translating… {pct}%")
 
             if ext == ".srt":
                 result = _translate_srt_content(
@@ -247,7 +259,11 @@ class TranslateFileThread(QThread):
                     content, self.src_lang, self.dst_lang, self.engine, on_progress,
                 )
 
+            self._emit("step_done", step="Translate")
+            self._emit("step_start", step="Format output")
+            self._emit("step_done", step="Format output")
             self.finished.emit(result)
 
         except Exception as e:
+            self._emit("log", level="error", text=str(e))
             self.error.emit(f"Translation error: {str(e)}")
