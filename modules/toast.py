@@ -36,7 +36,7 @@ class Toast(QFrame):
     def show_toast(self) -> None:
         from PySide6.QtCore import QSettings
         reduce_motion = QSettings("DogeAutoSub", "ui").value(
-            "view/reduceMotion", False, type=bool
+            "motion/reduce", False, type=bool
         )
         parent = self.parentWidget()
         if not parent:

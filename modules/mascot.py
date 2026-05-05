@@ -138,7 +138,7 @@ class MascotWidget(QLabel):
             self.setMovie(mv)
             from PySide6.QtCore import QSettings
             reduce_motion = QSettings("DogeAutoSub", "ui").value(
-                "view/reduceMotion", False, type=bool
+                "motion/reduce", False, type=bool
             )
             mv.jumpToFrame(0)
             if not reduce_motion:
