@@ -42,6 +42,8 @@ def test_required_widgets_present_after_setupUi(app):
         "trans_engine", "transOutput", "transStatusLabel", "saveTransBtn",
         # Aliases
         "selectDocxBtn", "selectTransFileBtn", "trans_src_lang", "trans_tgt_lang",
+        # Title bar icon
+        "titleBarIcon",
     ]
     missing = [n for n in required if not hasattr(ui, n)]
     assert not missing, f"missing widgets: {missing}"

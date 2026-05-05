@@ -170,6 +170,21 @@ QPushButton:disabled {{
     color: {text_tertiary};
 }}
 
+QPushButton#closeBtn, QPushButton#minBtn, QPushButton#zoomBtn {{
+    min-width: 12px; max-width: 12px;
+    min-height: 12px; max-height: 12px;
+    padding: 0;
+    margin: 0 2px;
+    border: none;
+    border-radius: 6px;
+}}
+QPushButton#closeBtn  {{ background: #ff5f57; }}
+QPushButton#minBtn    {{ background: #febc2e; }}
+QPushButton#zoomBtn   {{ background: #28c840; }}
+QPushButton#closeBtn:hover, QPushButton#minBtn:hover, QPushButton#zoomBtn:hover {{
+    border: 1px solid rgba(0,0,0,0.3);
+}}
+
 QPushButton#startButton, QPushButton#generateNotesBtn, QPushButton#translateFileBtn {{
     background: {accent};
     color: {accent_text};

@@ -6,7 +6,7 @@ worker threads do not need to be rewired. Tabs are gone; the workflow
 selection is driven by the sidebar via a QStackedWidget.
 """
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel,
     QLineEdit, QMainWindow, QProgressBar, QPushButton,
@@ -80,18 +80,22 @@ class Ui_MainWindow(object):
         tb.setContentsMargins(10, 0, 8, 0)
         tb.setSpacing(8)
 
-        for name, color in (("closeBtn", "#ff5f57"), ("minBtn", "#febc2e"), ("zoomBtn", "#28c840")):
+        for name in ("closeBtn", "minBtn", "zoomBtn"):
             b = QPushButton()
             b.setObjectName(name)
             b.setFixedSize(12, 12)
-            b.setStyleSheet(
-                f"QPushButton#{name} {{ background:{color}; border-radius:6px; border:none; }}"
-                f"QPushButton#{name}:hover {{ opacity:0.8; }}"
-            )
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
             tb.addWidget(b)
             setattr(self, name, b)
 
         tb.addSpacing(8)
+
+        # App icon (loaded by AutoUI.py if file exists; placeholder otherwise)
+        self.titleBarIcon = QLabel()
+        self.titleBarIcon.setObjectName("titleBarIcon")
+        self.titleBarIcon.setFixedSize(16, 16)
+        tb.addWidget(self.titleBarIcon)
+        tb.addSpacing(6)
 
         self.fauxTitleText = QLabel("DogeAutoSub")
         self.fauxTitleText.setObjectName("fauxTitleText")
@@ -242,6 +246,8 @@ class Ui_MainWindow(object):
 
         langGrid = QGridLayout()
         langGrid.setHorizontalSpacing(10)
+        langGrid.setVerticalSpacing(4)
+        langGrid.setContentsMargins(0, 4, 0, 8)
         langGrid.addWidget(self._label("Source"), 0, 0)
         self.source_language_dropdown = QComboBox()
         self.source_language_dropdown.setObjectName("srcLangDropdown")
@@ -255,6 +261,8 @@ class Ui_MainWindow(object):
         slay.addWidget(self._section_title("ENGINE"))
         engGrid = QGridLayout()
         engGrid.setHorizontalSpacing(10)
+        engGrid.setVerticalSpacing(4)
+        engGrid.setContentsMargins(0, 4, 0, 8)
         engGrid.addWidget(self._label("Translation Engine"), 0, 0)
         self.target_engine = QComboBox()
         self.target_engine.setObjectName("engineDropdown")
@@ -339,7 +347,7 @@ class Ui_MainWindow(object):
         # Mascot host (MascotWidget inserted by AutoUI.py)
         self.mascotHost = QFrame()
         self.mascotHost.setObjectName("mascotHost")
-        self.mascotHost.setFixedHeight(140)
+        self.mascotHost.setFixedHeight(80)
         mhLay = QHBoxLayout(self.mascotHost)
         mhLay.setContentsMargins(0, 0, 0, 0)
         mhLay.addStretch(1)

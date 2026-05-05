@@ -52,8 +52,8 @@ class MascotWidget(QLabel):
                  bubble_target: Optional[QLabel] = None):
         super().__init__(parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setMinimumSize(QSize(130, 130))
-        self.setMaximumSize(QSize(130, 130))
+        self.setMinimumSize(QSize(64, 64))
+        self.setMaximumSize(QSize(64, 64))
         self.state: str = "idle"
         self._movie: Optional[QMovie] = None
         self._icons_root = icons_root or self._default_icons_root()
@@ -88,13 +88,13 @@ class MascotWidget(QLabel):
             return
         if path.lower().endswith(".gif"):
             mv = QMovie(path)
-            mv.setScaledSize(QSize(130, 130))
+            mv.setScaledSize(QSize(64, 64))
             self.setMovie(mv)
             mv.start()
             self._movie = mv
         else:
             pm = QPixmap(path).scaled(
-                130, 130,
+                64, 64,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -134,7 +134,7 @@ class MascotWidget(QLabel):
         self.state = state_name
         if path.lower().endswith(".gif"):
             mv = QMovie(path)
-            mv.setScaledSize(QSize(130, 130))
+            mv.setScaledSize(QSize(64, 64))
             self.setMovie(mv)
             from PySide6.QtCore import QSettings
             reduce_motion = QSettings("DogeAutoSub", "ui").value(
@@ -146,7 +146,7 @@ class MascotWidget(QLabel):
             self._movie = mv
         else:
             pm = QPixmap(path).scaled(
-                130, 130,
+                64, 64,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )

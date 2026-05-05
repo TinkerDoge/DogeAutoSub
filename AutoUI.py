@@ -103,6 +103,16 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
+        # Also show icon in custom title bar
+        if os.path.exists(icon_path) and hasattr(self, "titleBarIcon"):
+            from PySide6.QtGui import QPixmap
+            pm = QPixmap(icon_path).scaled(
+                16, 16,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.titleBarIcon.setPixmap(pm)
+
         # ── Palette ─────────────────────────────────────────────────────
         from modules.theme_tokens import build_stylesheet, DEFAULT_PALETTE
         from PySide6.QtCore import QSettings
