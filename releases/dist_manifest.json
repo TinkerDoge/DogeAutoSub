@@ -1,7 +1,7 @@
 {
-  "version": "2.4.1",
+  "version": "2.4.2",
   "total_files": 4920,
-  "total_bytes": 7163322322,
+  "total_bytes": 7163324021,
   "files": {
     "DogeAutoSub.exe": {
       "size": 61111924,
@@ -1032,8 +1032,8 @@
       "sha256": "d666e6afaacfbb87270e7a23eef8da9955091893a7d6112d29848238723cddb2"
     },
     "_internal/modules/updater.py": {
-      "size": 15075,
-      "sha256": "3ccb390578115e31757165fd7a00fa47e17b45ef17476b36f0663fcc3e36fa16"
+      "size": 16774,
+      "sha256": "00829fde074d1f8a2706790edf0861f41ea9dfb27283efbb40047706436ad9ab"
     },
     "_internal/modules/CUDA/bin/cudart64_12.dll": {
       "size": 556544,

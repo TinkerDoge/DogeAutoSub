@@ -1,7 +1,7 @@
 {
-  "version": "2.4.1",
-  "filename": "DogeAutoSub_v2.4.1.zip",
-  "notes": "Fix: 'no attribute statusImage' crash for users upgrading from 2.1.x/2.2.x/2.3.x. Adds backward-compat alias so old code paths point at the new mascot widget.",
+  "version": "2.4.2",
+  "filename": "DogeAutoSub_v2.4.2.zip",
+  "notes": "Auto-updater now falls back to hardcoded LAN IP when mDNS (.local) is blocked by the network.",
   "files": {
     "AutoUI.py": "f83f22935887260069d618d2baa7a3d98c8a8c010c5875b11d7fa40e20bd028d",
     "verify_spec.py": "f2aab2b9367d3e6adcb130f3cf435cf4fc4dba9526ae9b499eae72d8e6b447f0",
@@ -55,7 +55,8 @@
     "modules/toast.py": "e6181c980273fc3e5c2df6447299465be6daf32514860848ccdf46f8200113d5",
     "modules/translate_thread.py": "3d2b8f103548c6ea2f044e58d301c47c4bd4afd26376750ad2878f86543ea796",
     "modules/ui_DogeAutoSub.py": "d666e6afaacfbb87270e7a23eef8da9955091893a7d6112d29848238723cddb2",
-    "modules/updater.py": "3ccb390578115e31757165fd7a00fa47e17b45ef17476b36f0663fcc3e36fa16",
+    "modules/updater.py": "00829fde074d1f8a2706790edf0861f41ea9dfb27283efbb40047706436ad9ab",
+    "scripts/build_dist_manifest.py": "ffe90be1901031e775a323552aa79274c48715df34dc94a6b852b16699e3c3a8",
     "scripts/regen_themes.py": "140447af87bcd778c18710223d8923bc698b27c03f9421648f76096369e7293b",
     "scripts/resize_mascot_gifs.py": "1d1fefc0ff088f2ebec819eb5c230b0281ee8269278c1645abca423e85e81d1d",
     "scripts/zip_release.py": "b43c00ca5b30b5c411511f992ba5d652585a6da7496c287b4796f83dc58c38cc",

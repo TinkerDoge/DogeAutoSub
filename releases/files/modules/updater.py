@@ -12,10 +12,15 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Current app version ─────────────────────────────────────────
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.4.2"
 
 # Default update server — override in updater_config.json
 DEFAULT_UPDATE_URL = "http://dogeautosub.local:8100"
+
+# Fallback servers tried when the primary URL is unreachable. Useful when
+# corporate networks / VPNs block mDNS (.local) — keep the maintainer's
+# LAN IP here as a stable backup. Update if the host machine moves.
+FALLBACK_UPDATE_URLS = ["http://10.76.171.113:8100"]
 
 
 @dataclass
@@ -27,6 +32,7 @@ class UpdateInfo:
     notes: str = ""
     is_newer: bool = False
     files: Dict[str, str] = field(default_factory=dict)  # path → hash
+    server_url: str = ""  # The base URL that actually answered (mDNS or fallback)
 
 
 def _version_tuple(v: str) -> tuple:
@@ -98,23 +104,58 @@ def save_update_server_url(url: str):
 
 # ── Check for Updates ───────────────────────────────────────────
 
+def _candidate_update_urls(server_url: Optional[str]) -> List[str]:
+    """Build the ordered list of URLs to probe.
+
+    Caller-supplied server_url (if any) wins. Otherwise: config URL first,
+    then any fallback URLs that are not duplicates of it.
+    """
+    if server_url:
+        return [server_url.rstrip("/")]
+    primary = get_update_server_url().rstrip("/")
+    seen = {primary}
+    out = [primary]
+    for fb in FALLBACK_UPDATE_URLS:
+        clean = fb.rstrip("/")
+        if clean and clean not in seen:
+            out.append(clean)
+            seen.add(clean)
+    return out
+
+
 def check_for_update(
     server_url: Optional[str] = None,
     timeout: int = 5,
 ) -> Optional[UpdateInfo]:
     """
     Check the update server for a newer version.
+
+    Tries the configured URL first, then any FALLBACK_UPDATE_URLS in order.
+    The URL that answered first is recorded in UpdateInfo.server_url so all
+    later download/patch calls hit the same host.
+
     Returns UpdateInfo if newer version available, None otherwise.
     """
-    url = (server_url or get_update_server_url()).rstrip("/")
-    manifest_url = f"{url}/version.json"
+    candidates = _candidate_update_urls(server_url)
+    data = None
+    working_url = None
+    last_error: Optional[str] = None
 
-    try:
-        req = urllib.request.Request(manifest_url)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
-        print(f"Update check skipped: {e}")
+    for candidate in candidates:
+        manifest_url = f"{candidate}/version.json"
+        try:
+            req = urllib.request.Request(manifest_url)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            working_url = candidate
+            break
+        except (urllib.error.URLError, urllib.error.HTTPError,
+                OSError, json.JSONDecodeError) as e:
+            last_error = f"{candidate}: {e}"
+            continue
+
+    if data is None or working_url is None:
+        print(f"Update check skipped: {last_error}")
         return None
 
     remote_version = data.get("version", "0.0.0")
@@ -126,10 +167,11 @@ def check_for_update(
         return UpdateInfo(
             version=remote_version,
             filename=filename,
-            download_url=f"{url}/{filename}",
+            download_url=f"{working_url}/{filename}",
             notes=notes,
             is_newer=True,
             files=files,
+            server_url=working_url,
         )
 
     return None
@@ -177,7 +219,9 @@ def download_delta_patch(
             │   └── ...
     """
     app_dir = app_dir or get_app_dir()
-    url = (server_url or get_update_server_url()).rstrip("/")
+    # Prefer the URL the original probe succeeded on (avoids retrying
+    # mDNS when the client only had IP reachability).
+    url = (server_url or update.server_url or get_update_server_url()).rstrip("/")
 
     changed = get_changed_files(update, app_dir)
 
