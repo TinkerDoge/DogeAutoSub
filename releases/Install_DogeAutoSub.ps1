@@ -18,6 +18,7 @@
 [CmdletBinding()]
 param(
     [string]$Server = "http://dogeautosub.local:8100",
+    [string[]]$FallbackServers = @("http://10.76.171.176:8100"),
     [string]$InstallDir = "",
     [switch]$NoPrompt
 )
@@ -57,24 +58,52 @@ function Pause-Exit($code) {
 }
 
 Write-Heading "DogeAutoSub Installer"
-Write-Host "    Server      : $Server"
+Write-Host "    Primary     : $Server"
+if ($FallbackServers -and $FallbackServers.Count -gt 0) {
+    foreach ($fb in $FallbackServers) {
+        Write-Host "    Fallback    : $fb"
+    }
+}
 Write-Host "    Install to  : $InstallDir"
 
-# ── 1. Probe the server ──────────────────────────────────────────────
-Write-Step "1/4" "Probing update server..."
-try {
-    $manifest = Invoke-WebRequest -Uri "$Server/version.json" -UseBasicParsing -TimeoutSec 10 |
-                Select-Object -ExpandProperty Content |
-                ConvertFrom-Json
-    Write-Ok "server reachable. Latest version: $($manifest.version)"
-} catch {
-    Write-Err "cannot reach $Server/version.json"
-    Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
+# ── 1. Probe the server (primary first, then any fallbacks) ──────────
+Write-Step "1/3" "Probing update server..."
+
+$candidates = @($Server) + @($FallbackServers | Where-Object { $_ -and $_ -ne $Server })
+$manifest = $null
+$reachableServer = $null
+$lastError = $null
+
+foreach ($candidate in $candidates) {
+    Write-Host "      try $candidate ..." -ForegroundColor DarkGray
+    try {
+        $manifest = Invoke-WebRequest -Uri "$candidate/version.json" -UseBasicParsing -TimeoutSec 6 |
+                    Select-Object -ExpandProperty Content |
+                    ConvertFrom-Json
+        $reachableServer = $candidate
+        Write-Ok "server reachable at $candidate (version $($manifest.version))"
+        break
+    } catch {
+        $lastError = $_.Exception.Message
+        Write-Host "        unreachable ($lastError)" -ForegroundColor DarkYellow
+    }
+}
+
+if (-not $manifest) {
+    Write-Err "no server reachable on any candidate URL"
+    Write-Host ""
+    Write-Host "  Last error: $lastError" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Make sure the update server is running on the host machine:" -ForegroundColor Yellow
     Write-Host "      python serve_updates.py" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  If your network blocks mDNS (.local), pass an explicit IP:" -ForegroundColor Yellow
+    Write-Host "      Install_DogeAutoSub.bat -Server http://<host-ip>:8100" -ForegroundColor Yellow
     Pause-Exit 1
 }
+
+# All subsequent requests use whichever URL actually answered.
+$Server = $reachableServer
 
 $version = $manifest.version
 $fullZip = "DogeAutoSub_v${version}_full.zip"
