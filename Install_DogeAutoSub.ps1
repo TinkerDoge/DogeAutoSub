@@ -4,7 +4,10 @@
 #
 # Defaults:
 #   Server       http://dogeautosub.local:8100  (mDNS)
-#   InstallDir   $env:USERPROFILE\DogeAutoSub
+#   InstallDir   <folder containing this script>\DogeAutoSub
+#
+# So if you drop Install_DogeAutoSub.bat into D:\Tools\ and run it,
+# the app installs at D:\Tools\DogeAutoSub\DogeAutoSub.exe.
 #
 # Usage:
 #   .\Install_DogeAutoSub.ps1                                       # use defaults
@@ -15,9 +18,16 @@
 [CmdletBinding()]
 param(
     [string]$Server = "http://dogeautosub.local:8100",
-    [string]$InstallDir = (Join-Path $env:USERPROFILE "DogeAutoSub"),
+    [string]$InstallDir = "",
     [switch]$NoPrompt
 )
+
+# Resolve default install dir relative to the script's own folder. We do
+# this after the param block so $PSScriptRoot is reliable across PS hosts.
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+    $base = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+    $InstallDir = Join-Path $base "DogeAutoSub"
+}
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "Continue"
