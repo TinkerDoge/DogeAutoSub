@@ -96,91 +96,185 @@ if (-not $NoPrompt) {
     }
 }
 
-# ── 3. Wipe existing install ─────────────────────────────────────────
-if (Test-Path $InstallDir) {
-    Write-Step "2/4" "Removing previous install..."
+# ── 3. Try the streaming-file installer first; fall back to zip ──────
+# Streaming mode pulls one file at a time from /dist/<rel>. If a file
+# already exists locally with the right size, it is skipped — so a
+# re-run of the installer resumes a partial download for free.
+$distManifest = $null
+try {
+    $distManifest = Invoke-WebRequest -Uri "$Server/dist_manifest.json" -UseBasicParsing -TimeoutSec 5 |
+                    Select-Object -ExpandProperty Content |
+                    ConvertFrom-Json
+} catch {
+    $distManifest = $null
+}
+
+function Install-FromStreamingFiles {
+    param($manifest, $InstallDir, $Server)
+
+    Write-Step "2/3" "Streaming files (resumable; safe to re-run)..."
+    Write-Host ("      {0:N0} files, {1:N2} GB total" -f $manifest.total_files, ($manifest.total_bytes / 1GB)) -ForegroundColor DarkGray
+
+    if (-not (Test-Path $InstallDir)) {
+        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    }
+
+    $i = 0
+    $bytesDone = 0
+    $bytesSkip = 0
+    $skipped = 0
+    $downloaded = 0
+    $files = $manifest.files
+    $names = $files.PSObject.Properties.Name
+    $total = $names.Count
+
+    foreach ($rel in $names) {
+        $i++
+        $entry = $files.$rel
+        $expected = [int64]$entry.size
+        $localPath = Join-Path $InstallDir ($rel -replace "/", "\")
+        $localDir = Split-Path -Parent $localPath
+        if (-not (Test-Path $localDir)) {
+            New-Item -ItemType Directory -Path $localDir -Force | Out-Null
+        }
+
+        # Skip if local size matches — fast resume signal.
+        if (Test-Path $localPath) {
+            $localSize = (Get-Item $localPath).Length
+            if ($localSize -eq $expected) {
+                $skipped++
+                $bytesSkip += $expected
+                continue
+            }
+        }
+
+        $url = "$Server/dist/$rel"
+        $attempts = 0
+        $maxAttempts = 3
+        while ($true) {
+            $attempts++
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $localPath -UseBasicParsing -TimeoutSec 60
+                break
+            } catch {
+                if ($attempts -ge $maxAttempts) { throw }
+                Write-Host ("        retry $attempts/$maxAttempts : $rel") -ForegroundColor DarkYellow
+                Start-Sleep -Seconds (2 * $attempts)
+            }
+        }
+
+        $downloaded++
+        $bytesDone += $expected
+
+        # Cheap progress: every 1% of total file count, print a status line.
+        if (($i % [Math]::Max(1, [int]($total / 100))) -eq 0) {
+            $pct = [Math]::Round(100 * $i / $total, 1)
+            $mb = [Math]::Round(($bytesDone + $bytesSkip) / 1MB, 0)
+            Write-Host ("      [$pct%] $i / $total  ($mb MB)  -> $rel") -ForegroundColor DarkGray
+        }
+    }
+
+    Write-Ok ("downloaded $downloaded, skipped $skipped (already correct), {0:N2} GB" -f (($bytesDone + $bytesSkip) / 1GB))
+}
+
+if ($distManifest -and $distManifest.files) {
     try {
-        Remove-Item -LiteralPath $InstallDir -Recurse -Force
-        Write-Ok "removed $InstallDir"
+        Install-FromStreamingFiles -manifest $distManifest -InstallDir $InstallDir -Server $Server
+        $streamingOk = $true
     } catch {
-        Write-Err "could not remove $InstallDir"
-        Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
-        Write-Host "      Close DogeAutoSub if it is currently running." -ForegroundColor Yellow
-        Pause-Exit 1
+        Write-Err "streaming install failed: $($_.Exception.Message)"
+        Write-Warn "falling back to zip download..."
+        $streamingOk = $false
     }
 } else {
-    Write-Step "2/4" "No previous install detected."
+    Write-Warn "server has no dist_manifest.json - using zip download"
+    $streamingOk = $false
 }
 
-# ── 4. Download ──────────────────────────────────────────────────────
-$tmpZip = Join-Path $env:TEMP $fullZip
-if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force }
+if ($streamingOk) {
+    # Streaming mode: locate exe and skip the zip path entirely.
+    $exePath = Join-Path $InstallDir "DogeAutoSub.exe"
+    if (-not (Test-Path $exePath)) {
+        $alt = Join-Path $InstallDir "DogeAutoSub\DogeAutoSub.exe"
+        if (Test-Path $alt) { $exePath = $alt }
+    }
+} else {
+    # ── Zip fallback path: wipe existing, download, extract ─────────────
+    if (Test-Path $InstallDir) {
+        Write-Step "2/3" "Removing previous install..."
+        try {
+            Remove-Item -LiteralPath $InstallDir -Recurse -Force
+            Write-Ok "removed $InstallDir"
+        } catch {
+            Write-Err "could not remove $InstallDir"
+            Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
+            Write-Host "      Close DogeAutoSub if it is currently running." -ForegroundColor Yellow
+            Pause-Exit 1
+        }
+    }
 
-Write-Step "3/4" "Downloading $fullZip ..."
-Write-Host "      (this can be several GB; please be patient)" -ForegroundColor DarkGray
+    $tmpZip = Join-Path $env:TEMP $fullZip
+    if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force }
 
-$downloadOk = $false
-try {
-    Invoke-WebRequest -Uri "$Server/$fullZip" -OutFile $tmpZip -UseBasicParsing
-    Write-Ok "downloaded $([Math]::Round((Get-Item $tmpZip).Length / 1MB, 1)) MB"
-    $downloadOk = $true
-} catch {
-    Write-Warn "full bundle not available, trying source zip..."
+    Write-Step "3/3" "Downloading $fullZip ..."
+    Write-Host "      (this can be several GB; please be patient)" -ForegroundColor DarkGray
+
+    $downloadOk = $false
     try {
-        Invoke-WebRequest -Uri "$Server/$srcZip" -OutFile $tmpZip -UseBasicParsing
-        Write-Ok "downloaded source zip ($([Math]::Round((Get-Item $tmpZip).Length / 1MB, 1)) MB)"
+        Invoke-WebRequest -Uri "$Server/$fullZip" -OutFile $tmpZip -UseBasicParsing
+        Write-Ok "downloaded $([Math]::Round((Get-Item $tmpZip).Length / 1MB, 1)) MB"
         $downloadOk = $true
     } catch {
-        Write-Err "download failed"
+        Write-Warn "full bundle not available, trying source zip..."
+        try {
+            Invoke-WebRequest -Uri "$Server/$srcZip" -OutFile $tmpZip -UseBasicParsing
+            Write-Ok "downloaded source zip ($([Math]::Round((Get-Item $tmpZip).Length / 1MB, 1)) MB)"
+            $downloadOk = $true
+        } catch {
+            Write-Err "download failed"
+            Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
+        }
+    }
+    if (-not $downloadOk) { Pause-Exit 1 }
+
+    $extractParent = Split-Path -Parent $InstallDir
+    if (-not (Test-Path $extractParent)) {
+        New-Item -ItemType Directory -Path $extractParent -Force | Out-Null
+    }
+    try {
+        Expand-Archive -LiteralPath $tmpZip -DestinationPath $extractParent -Force
+        Write-Ok "extracted"
+    } catch {
+        Write-Err "extract failed"
         Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
+        Pause-Exit 1
+    }
+    Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
+
+    $exePath = $null
+    $candidates = @(
+        (Join-Path $InstallDir "DogeAutoSub.exe"),
+        (Join-Path $extractParent "DogeAutoSub\DogeAutoSub.exe")
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { $exePath = $c; break }
     }
 }
 
-if (-not $downloadOk) { Pause-Exit 1 }
-
-# ── 5. Extract ───────────────────────────────────────────────────────
-Write-Step "4/4" "Extracting to $InstallDir ..."
-$extractParent = Split-Path -Parent $InstallDir
-if (-not (Test-Path $extractParent)) { New-Item -ItemType Directory -Path $extractParent -Force | Out-Null }
-
-try {
-    # The PyInstaller zip wraps everything in a "DogeAutoSub" folder, so
-    # extracting to the parent gives us $extractParent\DogeAutoSub already.
-    # If the user requested a different dir name we'll rename below.
-    Expand-Archive -LiteralPath $tmpZip -DestinationPath $extractParent -Force
-    Write-Ok "extracted"
-} catch {
-    Write-Err "extract failed"
-    Write-Host "      $($_.Exception.Message)" -ForegroundColor DarkGray
-    Pause-Exit 1
+# Zip-fallback branch may have landed extracted files at <parent>\DogeAutoSub
+# even though the user requested a different folder name — relocate if so.
+if (-not $streamingOk -and $extractParent) {
+    $defaultExtract = Join-Path $extractParent "DogeAutoSub"
+    if ($exePath -and (Test-Path $defaultExtract) -and ($defaultExtract -ne $InstallDir)) {
+        if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
+        Move-Item -LiteralPath $defaultExtract -Destination $InstallDir
+        $exePath = Join-Path $InstallDir "DogeAutoSub.exe"
+    }
 }
-
-# Locate the actual exe — the zip may produce DogeAutoSub\DogeAutoSub.exe
-# under the extraction parent.
-$exePath = $null
-$candidates = @(
-    (Join-Path $InstallDir "DogeAutoSub.exe"),
-    (Join-Path $extractParent "DogeAutoSub\DogeAutoSub.exe")
-)
-foreach ($c in $candidates) {
-    if (Test-Path $c) { $exePath = $c; break }
-}
-
-# If extraction landed at $extractParent\DogeAutoSub but user asked for a
-# different name, move it.
-$defaultExtract = Join-Path $extractParent "DogeAutoSub"
-if ($exePath -and (Test-Path $defaultExtract) -and ($defaultExtract -ne $InstallDir)) {
-    if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
-    Move-Item -LiteralPath $defaultExtract -Destination $InstallDir
-    $exePath = Join-Path $InstallDir "DogeAutoSub.exe"
-}
-
-# Clean up temp zip
-Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
 
 if (-not $exePath -or -not (Test-Path $exePath)) {
-    Write-Err "DogeAutoSub.exe not found after extract"
-    Write-Host "      Look manually inside: $extractParent" -ForegroundColor Yellow
+    Write-Err "DogeAutoSub.exe not found after install"
+    Write-Host "      Look manually inside: $InstallDir" -ForegroundColor Yellow
     Pause-Exit 1
 }
 
