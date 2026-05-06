@@ -146,7 +146,23 @@ def start_server(port: int):
 
     os.chdir(RELEASES_DIR)
     local_ip = get_local_ip()
-    handler = http.server.SimpleHTTPRequestHandler
+
+    # Quiet-disconnect handler: clients sometimes hang up before we finish
+    # writing a response (browsers, Invoke-WebRequest with short timeouts,
+    # mid-download cancels). The stock SimpleHTTPRequestHandler dumps a
+    # multi-line traceback for these. Swallow them and log one tidy line.
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def handle_one_request(self):
+            try:
+                super().handle_one_request()
+            except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError) as e:
+                # Client went away. Not an error.
+                self.log_message("client disconnected (%s)", type(e).__name__)
+            except Exception:
+                # Any other exception still bubbles via the default mechanism.
+                raise
+
+    handler = QuietHandler
 
     # Allow port reuse to avoid "address already in use"
     class ReusableTCPServer(socketserver.TCPServer):
