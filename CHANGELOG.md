@@ -4,6 +4,17 @@ All notable changes to DogeAutoSub are documented in this file.
 
 ---
 
+## [2.4.4] - 2026-05-11
+
+### Changed
+- Installer (`Install_DogeAutoSub.ps1`) gains repair mode: when re-run inside
+  an existing install folder it switches from size-only checks to full
+  SHA-256 verification, so outdated `.exe` / `.dll` / `.pyd` files (anything
+  not patchable via the in-app delta updater) get caught and replaced. Files
+  above 50 MB are still trusted by size to keep the scan fast.
+
+---
+
 ## [2.4.3] - 2026-05-11
 
 ### Fixed

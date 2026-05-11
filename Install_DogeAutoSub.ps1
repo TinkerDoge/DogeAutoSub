@@ -18,7 +18,7 @@
 [CmdletBinding()]
 param(
     [string]$Server = "http://dogeautosub.local:8100",
-    [string[]]$FallbackServers = @("http://10.76.171.176:8100"),
+    [string[]]$FallbackServers = @("http://10.76.171.113:8100"),
     [string]$InstallDir = "",
     [switch]$NoPrompt
 )
@@ -141,18 +141,39 @@ try {
 function Install-FromStreamingFiles {
     param($manifest, $InstallDir, $Server)
 
-    Write-Step "2/3" "Streaming files (resumable; safe to re-run)..."
+    # Detect existing install. If DogeAutoSub.exe is already at the target,
+    # this is a repair/upgrade pass — switch from "trust file size" to full
+    # SHA-256 verification so outdated files (DLLs, .exe, .pyd) get caught
+    # and replaced. Files in delta-update territory (.py/.css/.gif tracked
+    # by the in-app updater) get the same treatment here — when the
+    # installer's dist is the source of truth, it's correct to bring them
+    # in line too.
+    $repairMode = Test-Path (Join-Path $InstallDir "DogeAutoSub.exe")
+
+    if ($repairMode) {
+        Write-Step "2/3" "Repair mode: verifying every file by SHA-256..."
+        Write-Host "      (existing install detected at $InstallDir)" -ForegroundColor DarkGray
+    } else {
+        Write-Step "2/3" "Streaming files (resumable; safe to re-run)..."
+    }
     Write-Host ("      {0:N0} files, {1:N2} GB total" -f $manifest.total_files, ($manifest.total_bytes / 1GB)) -ForegroundColor DarkGray
 
     if (-not (Test-Path $InstallDir)) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
+    # Hashing huge files (multi-GB model.bin, big DLLs) on a slow drive can
+    # take minutes per file. Different builds of the same large binary
+    # virtually always differ in size too, so trust size on anything above
+    # this threshold and only hash smaller files.
+    $hashThreshold = 50MB
+
     $i = 0
     $bytesDone = 0
     $bytesSkip = 0
     $skipped = 0
     $downloaded = 0
+    $replaced = 0
     $files = $manifest.files
     $names = $files.PSObject.Properties.Name
     $total = $names.Count
@@ -161,20 +182,44 @@ function Install-FromStreamingFiles {
         $i++
         $entry = $files.$rel
         $expected = [int64]$entry.size
+        $expectedHash = $null
+        if ($entry.PSObject.Properties.Name -contains "sha256") {
+            $expectedHash = $entry.sha256
+        }
         $localPath = Join-Path $InstallDir ($rel -replace "/", "\")
         $localDir = Split-Path -Parent $localPath
         if (-not (Test-Path $localDir)) {
             New-Item -ItemType Directory -Path $localDir -Force | Out-Null
         }
 
-        # Skip if local size matches — fast resume signal.
+        $needsDownload = $true
+        $wasReplacement = $false
+
         if (Test-Path $localPath) {
             $localSize = (Get-Item $localPath).Length
-            if ($localSize -eq $expected) {
-                $skipped++
-                $bytesSkip += $expected
-                continue
+
+            if ($localSize -ne $expected) {
+                # Size mismatch: always re-download.
+                $wasReplacement = $true
+            } elseif ($repairMode -and $expectedHash -and $expected -le $hashThreshold) {
+                # In repair mode, verify by hash for files under the threshold.
+                $localHash = (Get-FileHash -Path $localPath -Algorithm SHA256).Hash.ToLower()
+                if ($localHash -eq $expectedHash.ToLower()) {
+                    $needsDownload = $false
+                } else {
+                    $wasReplacement = $true
+                    Write-Host ("        outdated -> $rel") -ForegroundColor DarkYellow
+                }
+            } else {
+                # Fresh install, or file too large to hash: trust size.
+                $needsDownload = $false
             }
+        }
+
+        if (-not $needsDownload) {
+            $skipped++
+            $bytesSkip += $expected
+            continue
         }
 
         $url = "$Server/dist/$rel"
@@ -193,6 +238,7 @@ function Install-FromStreamingFiles {
         }
 
         $downloaded++
+        if ($wasReplacement) { $replaced++ }
         $bytesDone += $expected
 
         # Cheap progress: every 1% of total file count, print a status line.
@@ -203,7 +249,11 @@ function Install-FromStreamingFiles {
         }
     }
 
-    Write-Ok ("downloaded $downloaded, skipped $skipped (already correct), {0:N2} GB" -f (($bytesDone + $bytesSkip) / 1GB))
+    if ($repairMode) {
+        Write-Ok ("downloaded $downloaded ($replaced replacements), verified $skipped intact, {0:N2} GB" -f (($bytesDone + $bytesSkip) / 1GB))
+    } else {
+        Write-Ok ("downloaded $downloaded, skipped $skipped (already correct), {0:N2} GB" -f (($bytesDone + $bytesSkip) / 1GB))
+    }
 }
 
 if ($distManifest -and $distManifest.files) {

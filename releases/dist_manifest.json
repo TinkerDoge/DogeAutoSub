@@ -1,7 +1,7 @@
 {
-  "version": "2.4.3",
+  "version": "2.4.4",
   "total_files": 4922,
-  "total_bytes": 7163328225,
+  "total_bytes": 7163328266,
   "files": {
     "DogeAutoSub.exe": {
       "size": 61111924,
@@ -840,8 +840,8 @@
       "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
     },
     "_internal/logs/dogeautosub-20260511.log": {
-      "size": 376,
-      "sha256": "dd5f4bd51f8ba24abc569a1a50c08c8d6de31d5a9e52c3d1f5783919c0fa49ce"
+      "size": 418,
+      "sha256": "562b323c9b34506b763dfbb008dc39ec3fbb1ffd60e10a7068e1006e85b47c5a"
     },
     "_internal/lxml/builder.cp311-win_amd64.pyd": {
       "size": 90112,
@@ -988,8 +988,8 @@
       "sha256": "6e9397031a5f113c68b0cebd0d1a29e2b99850b3e9657a949991a3c1e85fe52d"
     },
     "_internal/modules/mlaas_models_cache.json": {
-      "size": 3283,
-      "sha256": "06ccfa3fe90ef54ebec2f37b11c8f1446f63f8155e5557544413af617b0fc29f"
+      "size": 3282,
+      "sha256": "71dcc7546068cb0ac68adaa781dfd9c10bb5f7eb37075692f38341eea07982d1"
     },
     "_internal/modules/palette_menu.py": {
       "size": 2298,
@@ -1041,7 +1041,7 @@
     },
     "_internal/modules/updater.py": {
       "size": 16774,
-      "sha256": "7bf3c3cc6471e82731cde1d05c96817b1c735c433b3ce32fec93f19aade3d381"
+      "sha256": "0a5dbd7b030830438694baf96756fd08b010c13f2e6c83cd421bf191815c1427"
     },
     "_internal/modules/CUDA/bin/cudart64_12.dll": {
       "size": 556544,

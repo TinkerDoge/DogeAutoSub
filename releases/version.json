@@ -1,7 +1,7 @@
 {
-  "version": "2.4.3",
-  "filename": "DogeAutoSub_v2.4.3.zip",
-  "notes": "Fix misleading 'faster-whisper is not installed' error - now surfaces the real ImportError instead of useless pip-install advice.",
+  "version": "2.4.4",
+  "filename": "DogeAutoSub_v2.4.4.zip",
+  "notes": "Installer repair mode: re-running inside an existing install now hash-verifies every file (under 50 MB) and replaces outdated/corrupt copies - catches stale .exe/.dll that the in-app delta updater cannot touch.",
   "files": {
     "AutoUI.py": "f83f22935887260069d618d2baa7a3d98c8a8c010c5875b11d7fa40e20bd028d",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
@@ -54,7 +54,7 @@
     "modules/toast.py": "e6181c980273fc3e5c2df6447299465be6daf32514860848ccdf46f8200113d5",
     "modules/translate_thread.py": "3d2b8f103548c6ea2f044e58d301c47c4bd4afd26376750ad2878f86543ea796",
     "modules/ui_DogeAutoSub.py": "d666e6afaacfbb87270e7a23eef8da9955091893a7d6112d29848238723cddb2",
-    "modules/updater.py": "7bf3c3cc6471e82731cde1d05c96817b1c735c433b3ce32fec93f19aade3d381",
+    "modules/updater.py": "0a5dbd7b030830438694baf96756fd08b010c13f2e6c83cd421bf191815c1427",
     "scripts/build_dist_manifest.py": "ffe90be1901031e775a323552aa79274c48715df34dc94a6b852b16699e3c3a8",
     "scripts/regen_themes.py": "140447af87bcd778c18710223d8923bc698b27c03f9421648f76096369e7293b",
     "scripts/resize_mascot_gifs.py": "1d1fefc0ff088f2ebec819eb5c230b0281ee8269278c1645abca423e85e81d1d",

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ── Current app version ─────────────────────────────────────────
-APP_VERSION = "2.4.3"
+APP_VERSION = "2.4.4"
 
 # Default update server — override in updater_config.json
 DEFAULT_UPDATE_URL = "http://dogeautosub.local:8100"
