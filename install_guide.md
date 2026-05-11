@@ -57,3 +57,6 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
 - If you encounter issues with transformers, ensure Python 3.8+ is installed
 - For audio processing issues, verify FFmpeg is properly configured
 - For translation issues, check your internet connection (for Google Translate)
+
+
+.venv\Scripts\pyinstaller.exe DogeAutoSubApp.spec --noconfirm
