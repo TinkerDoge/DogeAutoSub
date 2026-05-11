@@ -4,6 +4,19 @@ All notable changes to DogeAutoSub are documented in this file.
 
 ---
 
+## [2.4.5] - 2026-05-11
+
+### Fixed
+- `faster-whisper` and `numpy` were unimportable in the frozen .exe because
+  the PyInstaller build bundled only their binary extensions (.pyd/.dll) but
+  missed the Python source (`__init__.py`, submodules). Python treated them as
+  empty namespace packages, making `numpy.ndarray` undefined and
+  `faster_whisper.WhisperModel` missing. Fix: manually patched `_internal/`
+  with Python source from the build venv; spec updated with `collect_all()`
+  for both packages so future builds are correct.
+
+---
+
 ## [2.4.4] - 2026-05-11
 
 ### Changed

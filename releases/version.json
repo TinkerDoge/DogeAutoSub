@@ -1,9 +1,9 @@
 {
-  "version": "2.4.4",
-  "filename": "DogeAutoSub_v2.4.4.zip",
-  "notes": "Fixed faster-whisper double-import error when clicking Transcribe in PyInstaller build",
+  "version": "2.4.5",
+  "filename": "DogeAutoSub_v2.4.5.zip",
+  "notes": "Fix faster_whisper and numpy unimportable in frozen .exe \u2014 both were namespace-package stubs missing their Python source.",
   "files": {
-    "AutoUI.py": "f83f22935887260069d618d2baa7a3d98c8a8c010c5875b11d7fa40e20bd028d",
+    "AutoUI.py": "d2269a4291c6bd70f79ffed733cf16d9d897374fcf952e6823890a3020bc6b1f",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
     "icons/done.gif": "b24b95e8ad53ce399b4998a8741869ce69481548c44ae6af501b04857bd6d4dc",
     "icons/done.jpg": "73b58b7a766d71cd2b9f7279fa186908ed50f2b43671c32b6c757f819de2ec2a",
@@ -54,7 +54,7 @@
     "modules/toast.py": "e6181c980273fc3e5c2df6447299465be6daf32514860848ccdf46f8200113d5",
     "modules/translate_thread.py": "3d2b8f103548c6ea2f044e58d301c47c4bd4afd26376750ad2878f86543ea796",
     "modules/ui_DogeAutoSub.py": "d666e6afaacfbb87270e7a23eef8da9955091893a7d6112d29848238723cddb2",
-    "modules/updater.py": "0a5dbd7b030830438694baf96756fd08b010c13f2e6c83cd421bf191815c1427",
+    "modules/updater.py": "72c0354046711cf00e93ee6eea61671e87f2ad18301cb2e197c2ada1b82bbf7d",
     "scripts/build_dist_manifest.py": "ffe90be1901031e775a323552aa79274c48715df34dc94a6b852b16699e3c3a8",
     "scripts/regen_themes.py": "140447af87bcd778c18710223d8923bc698b27c03f9421648f76096369e7293b",
     "scripts/resize_mascot_gifs.py": "1d1fefc0ff088f2ebec819eb5c230b0281ee8269278c1645abca423e85e81d1d",

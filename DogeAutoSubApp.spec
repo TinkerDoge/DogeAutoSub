@@ -6,6 +6,7 @@ Updated for the cleaned-up module structure (faster-whisper only).
 import os
 
 block_cipher = None
+binaries = []
 
 current_dir = os.path.dirname(os.path.abspath('AutoUI.py'))
 
@@ -89,16 +90,36 @@ cuda_dir = os.path.join('modules', 'CUDA')
 if os.path.isdir(cuda_dir):
     datas.append((cuda_dir, 'modules/CUDA'))
 
-# Include faster-whisper VAD assets
+# Collect faster-whisper (Python source + VAD assets + binaries).
+# Using collect_all() puts the Python source on disk as data files so that
+# PathFinder can import it at runtime. This is required because the
+# faster_whisper/ data directory already exists for the VAD assets — having
+# that directory without Python source makes Python treat faster_whisper as
+# an empty namespace package, shadowing any frozen copy in PYZ.
 try:
-    import faster_whisper
-    fw_path = os.path.dirname(faster_whisper.__file__)
-    assets_path = os.path.join(fw_path, 'assets')
-    if os.path.exists(assets_path):
-        datas.append((assets_path, 'faster_whisper/assets'))
-        print(f"Including faster_whisper assets from: {assets_path}")
+    from PyInstaller.utils.hooks import collect_all
+    fw_datas, fw_binaries, fw_hidden = collect_all('faster_whisper')
+    datas += fw_datas
+    binaries += fw_binaries
+    hiddenimports += fw_hidden
+    print(f"collect_all('faster_whisper'): {len(fw_datas)} datas, {len(fw_binaries)} binaries, {len(fw_hidden)} hidden")
 except Exception as e:
-    print(f"Warning: Could not include faster_whisper assets: {e}")
+    print(f"Warning: collect_all('faster_whisper') failed: {e}")
+
+# Collect numpy (Python source + binary extensions).
+# PyInstaller's default hook may miss numpy 2.x source; collect_all ensures
+# numpy/__init__.py and subpackage sources are on disk so PathFinder can
+# load them. Without this, import numpy finds the numpy/ data directory as
+# a namespace package and 'numpy.ndarray' is undefined.
+try:
+    from PyInstaller.utils.hooks import collect_all
+    np_datas, np_binaries, np_hidden = collect_all('numpy')
+    datas += np_datas
+    binaries += np_binaries
+    hiddenimports += np_hidden
+    print(f"collect_all('numpy'): {len(np_datas)} datas, {len(np_binaries)} binaries, {len(np_hidden)} hidden")
+except Exception as e:
+    print(f"Warning: collect_all('numpy') failed: {e}")
 
 # Include config files if they exist
 for cfg in ('mlaas_config.json', 'updater_config.json'):
@@ -110,7 +131,7 @@ for cfg in ('mlaas_config.json', 'updater_config.json'):
 a = Analysis(
     ['AutoUI.py'],
     pathex=[current_dir],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -146,7 +167,19 @@ updatable_modules = {
     'modules.toast', 'modules.log_panel', 'modules.log_writer',
     'modules.animations', 'modules.splash',
 }
-a.pure = [entry for entry in a.pure if entry[0] not in updatable_modules]
+
+def _exclude_from_pyz(module_name: str) -> bool:
+    if module_name in updatable_modules:
+        return True
+    # Keep these heavy packages on disk to avoid mixed PYZ/disk import paths
+    # that can trigger duplicate native module loads in frozen apps.
+    if module_name == 'faster_whisper' or module_name.startswith('faster_whisper.'):
+        return True
+    if module_name == 'numpy' or module_name.startswith('numpy.'):
+        return True
+    return False
+
+a.pure = [entry for entry in a.pure if not _exclude_from_pyz(entry[0])]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -161,7 +194,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,          # Release build: no console window beside the GUI
+    console=True,          # Release build: no console window beside the GUI
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

@@ -66,12 +66,13 @@ except ImportError:
     print("Google Translate not available (install deep-translator)")
 
 
-
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+def _get_torch_module():
+    """Import torch lazily so we do not preload numpy before transcription starts."""
+    try:
+        import torch
+        return torch
+    except Exception:
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -188,8 +189,9 @@ class DogeAutoSub(ui_DogeAutoSub.Ui_MainWindow, QMainWindow):
         # ── Status bar ──────────────────────────────────────────────────
         self.statusBarVersion.setText(f"v{APP_VERSION}")
         try:
-            if TORCH_AVAILABLE and torch.cuda.is_available():
-                self.statusBarGpu.setText(f"GPU: {torch.cuda.get_device_name(0)}")
+            torch_mod = _get_torch_module()
+            if torch_mod and torch_mod.cuda.is_available():
+                self.statusBarGpu.setText(f"GPU: {torch_mod.cuda.get_device_name(0)}")
             else:
                 self.statusBarGpu.setText("GPU: CPU only")
         except Exception:
