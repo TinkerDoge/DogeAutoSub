@@ -6,15 +6,22 @@ Uses CTranslate2 for GPU-accelerated transcription with 4x+ speed improvement.
 
 import os
 import sys
+import traceback
 from typing import Callable, List, Optional, Tuple
 
-# Check for faster-whisper availability
+# Try to import faster-whisper. If it fails, capture the real cause —
+# a bundled .exe user can't "pip install" anything, so the actual import
+# error (almost always a dependency DLL or sub-package failing to load)
+# is the only useful signal.
+FASTER_WHISPER_IMPORT_ERROR: Optional[str] = None
 try:
     from faster_whisper import WhisperModel, BatchedInferencePipeline
     FASTER_WHISPER_AVAILABLE = True
-except ImportError:
+except Exception as _fw_err:
     FASTER_WHISPER_AVAILABLE = False
-    print("faster-whisper not available. Install with: pip install faster-whisper")
+    FASTER_WHISPER_IMPORT_ERROR = f"{type(_fw_err).__name__}: {_fw_err}"
+    print(f"faster-whisper failed to import: {FASTER_WHISPER_IMPORT_ERROR}")
+    traceback.print_exc()
 
 # Check for torch/CUDA
 try:
@@ -150,9 +157,11 @@ class FasterWhisperRecognizer:
             allow_cpu_fallback: Retry on CPU if CUDA model load fails
         """
         if not FASTER_WHISPER_AVAILABLE:
+            detail = FASTER_WHISPER_IMPORT_ERROR or "unknown import failure"
             raise ImportError(
-                "faster-whisper is not installed. "
-                "Install with: pip install faster-whisper"
+                f"faster-whisper engine unavailable: {detail}. "
+                "Check that ctranslate2/onnxruntime DLLs and the Visual C++ "
+                "runtime are present in _internal/."
             )
         
         self.language = language if language != "auto" else None

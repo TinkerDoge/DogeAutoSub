@@ -4,6 +4,16 @@ All notable changes to DogeAutoSub are documented in this file.
 
 ---
 
+## [2.4.3] - 2026-05-11
+
+### Fixed
+- Misleading "faster-whisper is not installed" error in the bundled .exe. The
+  engine now surfaces the actual ImportError (which is almost always a
+  dependency DLL — ctranslate2, onnxruntime, VC++ runtime — failing to load)
+  instead of advising `pip install`, which is useless for a frozen app.
+
+---
+
 ## [2.2.1] - 2026-03-12
 
 ### Changed

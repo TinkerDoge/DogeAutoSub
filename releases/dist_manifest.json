@@ -1,7 +1,7 @@
 {
-  "version": "2.4.2",
-  "total_files": 4920,
-  "total_bytes": 7163324021,
+  "version": "2.4.3",
+  "total_files": 4922,
+  "total_bytes": 7163328225,
   "files": {
     "DogeAutoSub.exe": {
       "size": 61111924,
@@ -839,6 +839,10 @@
       "size": 1475,
       "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
     },
+    "_internal/logs/dogeautosub-20260511.log": {
+      "size": 376,
+      "sha256": "dd5f4bd51f8ba24abc569a1a50c08c8d6de31d5a9e52c3d1f5783919c0fa49ce"
+    },
     "_internal/lxml/builder.cp311-win_amd64.pyd": {
       "size": 90112,
       "sha256": "15dafd83ed8d77136ad063579530a9f8d0c2be2632adcf2126d8ff980d71f642"
@@ -948,8 +952,8 @@
       "sha256": "0cbe7bf367ef541ae76809be8a1c5172c2f74ada9acf820086e43f2da281e1a9"
     },
     "_internal/modules/faster_whisper_engine.py": {
-      "size": 20787,
-      "sha256": "c870f6a317ccb48de34a16f5ee1a77887deb1b081a12ec7d21cc9b610442cf71"
+      "size": 21332,
+      "sha256": "3280704578cec8a92ec9d6ccbe271b6c3e8a196ee784d5aea9928fca3368654e"
     },
     "_internal/modules/log_panel.py": {
       "size": 12820,
@@ -982,6 +986,10 @@
     "_internal/modules/mlaas_config.json": {
       "size": 26,
       "sha256": "6e9397031a5f113c68b0cebd0d1a29e2b99850b3e9657a949991a3c1e85fe52d"
+    },
+    "_internal/modules/mlaas_models_cache.json": {
+      "size": 3283,
+      "sha256": "06ccfa3fe90ef54ebec2f37b11c8f1446f63f8155e5557544413af617b0fc29f"
     },
     "_internal/modules/palette_menu.py": {
       "size": 2298,
@@ -1033,7 +1041,7 @@
     },
     "_internal/modules/updater.py": {
       "size": 16774,
-      "sha256": "00829fde074d1f8a2706790edf0861f41ea9dfb27283efbb40047706436ad9ab"
+      "sha256": "7bf3c3cc6471e82731cde1d05c96817b1c735c433b3ce32fec93f19aade3d381"
     },
     "_internal/modules/CUDA/bin/cudart64_12.dll": {
       "size": 556544,
