@@ -15,8 +15,8 @@ hiddenimports = [
     'PySide6', 'PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui',
     'shiboken6',
 
-    # Faster-whisper + audio
-    'faster_whisper', 'ctranslate2',
+    # Audio libraries (faster_whisper will be imported from disk-based modules.faster_whisper_engine)
+    'ctranslate2',
     'torch', 'numpy',
     'av',
 

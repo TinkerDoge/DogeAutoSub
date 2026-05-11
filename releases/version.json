@@ -1,7 +1,7 @@
 {
   "version": "2.4.4",
   "filename": "DogeAutoSub_v2.4.4.zip",
-  "notes": "Installer repair mode: re-running inside an existing install now hash-verifies every file (under 50 MB) and replaces outdated/corrupt copies - catches stale .exe/.dll that the in-app delta updater cannot touch.",
+  "notes": "Fixed faster-whisper double-import error when clicking Transcribe in PyInstaller build",
   "files": {
     "AutoUI.py": "f83f22935887260069d618d2baa7a3d98c8a8c010c5875b11d7fa40e20bd028d",
     "icons/doge.ico": "8e04afcc12900de46e749bc12ce1b3022bfd1f67673560c24a400206e3d8b97d",
